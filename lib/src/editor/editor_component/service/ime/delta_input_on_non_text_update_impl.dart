@@ -3,11 +3,22 @@ import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Apply IME cursor/composing [nonTextUpdate] to borrowed [editorState].
+/// [characterShortcutEvents] are retained for shortcut integration. A local
+/// permission or pause transition invalidates pending cursor updates.
+/// Optional [isInputCurrent] rejects a closed/replaced input connection after
+/// asynchronous work; null retains direct editor-command behavior.
 Future<void> onNonTextUpdate(
   TextEditingDeltaNonTextUpdate nonTextUpdate,
   EditorState editorState,
-  List<CharacterShortcutEvent> characterShortcutEvents,
-) async {
+  List<CharacterShortcutEvent> characterShortcutEvents, {
+  bool Function()? isInputCurrent,
+}) async {
+  final epoch = editorState.localTransactionEpoch;
+  if (!editorState.canAcceptLocalTransactions ||
+      !(isInputCurrent?.call() ?? true)) {
+    return;
+  }
   AppFlowyEditorLog.input.debug('onNonTextUpdate: $nonTextUpdate');
 
   // update the selection on Windows
@@ -16,7 +27,16 @@ Future<void> onNonTextUpdate(
   // with the selection range.
   final selection = editorState.selection;
 
-  if (await _checkIfBacktickPressed(editorState, nonTextUpdate)) {
+  if (await _checkIfBacktickPressed(
+    editorState,
+    nonTextUpdate,
+    isInputCurrent: isInputCurrent,
+  )) {
+    return;
+  }
+  if (!editorState.canAcceptLocalTransactions ||
+      editorState.localTransactionEpoch != epoch ||
+      !(isInputCurrent?.call() ?? true)) {
     return;
   }
 
@@ -33,7 +53,7 @@ Future<void> onNonTextUpdate(
     }
   } else if (PlatformExtension.isLinux) {
     if (selection != null) {
-      await editorState.updateSelectionWithReason(
+      editorState.updateSelectionWithReason(
         Selection.collapsed(
           Position(
             path: selection.start.path,
@@ -44,7 +64,7 @@ Future<void> onNonTextUpdate(
     }
   } else if (PlatformExtension.isMacOS) {
     if (selection != null) {
-      await editorState.updateSelectionWithReason(
+      editorState.updateSelectionWithReason(
         Selection.collapsed(
           Position(
             path: selection.start.path,
@@ -54,7 +74,23 @@ Future<void> onNonTextUpdate(
       );
     }
   } else if (PlatformExtension.isAndroid) {
-    await handleAndroidNonTextUpdate(nonTextUpdate, editorState);
+    // on some Android keyboards (e.g. Gboard), they use non-text update to update the selection when moving cursor
+    // by space bar.
+    // for the another keyboards (e.g. system keyboard), they will trigger the
+    // `onFloatingCursor` event instead.
+    AppFlowyEditorLog.input.debug('[Android] onNonTextUpdate: $nonTextUpdate');
+    if (selection != null) {
+      final nonTextUpdateStart = nonTextUpdate.selection.start;
+      final selectionStart = selection.start.offset;
+      if (nonTextUpdateStart != selectionStart) {
+        editorState.updateSelectionWithReason(
+          Selection.collapsed(
+            Position(path: selection.start.path, offset: nonTextUpdateStart),
+          ),
+          reason: SelectionUpdateReason.uiEvent,
+        );
+      }
+    }
   } else if (PlatformExtension.isIOS) {
     // on iOS, the cursor movement will trigger the `onFloatingCursor` event.
     // so we don't need to handle the non-text update here.
@@ -62,59 +98,15 @@ Future<void> onNonTextUpdate(
   }
 }
 
-@visibleForTesting
-Future<bool> handleAndroidNonTextUpdate(
-  TextEditingDeltaNonTextUpdate nonTextUpdate,
-  EditorState editorState,
-) async {
-  // on some Android keyboards (e.g. Gboard), they use non-text update to update the selection when moving cursor
-  // by space bar.
-  // for the another keyboards (e.g. system keyboard), they will trigger the
-  // `onFloatingCursor` event instead.
-  AppFlowyEditorLog.input.debug('[Android] onNonTextUpdate: $nonTextUpdate');
-
-  final selection = editorState.selection;
-  if (selection == null) {
-    return false;
-  }
-
-  if (_isSelectAllNonTextUpdate(nonTextUpdate)) {
-    return selectAllCommand.execute(editorState) == KeyEventResult.handled;
-  }
-
-  final nonTextUpdateStart = nonTextUpdate.selection.start;
-  final selectionStart = selection.start.offset;
-  if (nonTextUpdateStart != selectionStart) {
-    await editorState.updateSelectionWithReason(
-      Selection.collapsed(
-        Position(
-          path: selection.start.path,
-          offset: nonTextUpdateStart,
-        ),
-      ),
-      reason: SelectionUpdateReason.uiEvent,
-    );
-
-    return true;
-  }
-
-  return false;
-}
-
-bool _isSelectAllNonTextUpdate(TextEditingDeltaNonTextUpdate nonTextUpdate) {
-  final selection = nonTextUpdate.selection;
-
-  return nonTextUpdate.oldText.isNotEmpty &&
-      selection.start == 0 &&
-      selection.end == nonTextUpdate.oldText.length &&
-      !selection.isCollapsed &&
-      nonTextUpdate.composing.isCollapsed;
-}
-
+/// Interpret a completed backtick composition in [nonTextUpdate] for borrowed
+/// [editorState]; a changed input epoch or false [isInputCurrent] prevents a
+/// subsequent formatting step.
 Future<bool> _checkIfBacktickPressed(
   EditorState editorState,
-  TextEditingDeltaNonTextUpdate nonTextUpdate,
-) async {
+  TextEditingDeltaNonTextUpdate nonTextUpdate, {
+  bool Function()? isInputCurrent,
+}) async {
+  final epoch = editorState.localTransactionEpoch;
   // if the composing range is not empty, it means the user is typing a text,
   // so we don't need to handle the backtick pressed event
   if (!nonTextUpdate.composing.isCollapsed) {
@@ -130,14 +122,12 @@ Future<bool> _checkIfBacktickPressed(
   final selection = editorState.selection;
   if (selection == null || !selection.isCollapsed) {
     AppFlowyEditorLog.input.debug('selection is null or not collapsed');
-
     return false;
   }
 
   final node = editorState.getNodesInSelection(selection).firstOrNull;
   if (node == null) {
     AppFlowyEditorLog.input.debug('node is null');
-
     return false;
   }
 
@@ -145,7 +135,6 @@ Future<bool> _checkIfBacktickPressed(
   final lastCharacter = node.delta?.toPlainText().characters.lastOrNull;
   if (lastCharacter != '`') {
     AppFlowyEditorLog.input.debug('last character is not backtick');
-
     return false;
   }
 
@@ -160,13 +149,17 @@ Future<bool> _checkIfBacktickPressed(
 
   if (!shouldApplyFormat) {
     AppFlowyEditorLog.input.debug('should not apply format');
-
     return false;
   }
 
   final transaction = editorState.transaction;
   transaction.deleteText(node, node.delta!.toPlainText().length - 1, 1);
   await editorState.apply(transaction);
+  if (!editorState.canAcceptLocalTransactions ||
+      editorState.localTransactionEpoch != epoch ||
+      !(isInputCurrent?.call() ?? true)) {
+    return false;
+  }
 
   // remove the last backtick, and try to format the text to code block
   final isFormatted = handleFormatByWrappingWithSingleCharacter(

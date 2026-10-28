@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/editor_component/service/ime/text_input_service.dart';
 import 'package:flutter/material.dart';
@@ -32,13 +31,11 @@ class TestableEditor {
   late EditorState _editorState;
 
   Document get document => _editorState.document;
-
   int get documentRootLen => document.root.children.length;
 
   Selection? get selection => _editorState.selection;
 
   MockIMEInput? _ime;
-
   MockIMEInput get ime {
     return _ime ??= MockIMEInput(
       editorState: editorState,
@@ -169,7 +166,6 @@ class TestableEditor {
       ),
     );
     await tester.pump();
-
     return this;
   }
 
@@ -228,11 +224,9 @@ class TestableEditor {
   }
 
   Future<void> updateSelection(Selection? selection) async {
-    unawaited(
-      _editorState.updateSelectionWithReason(
-        selection,
-        reason: SelectionUpdateReason.uiEvent,
-      ),
+    _editorState.updateSelectionWithReason(
+      selection,
+      reason: SelectionUpdateReason.uiEvent,
     );
     await tester.pumpAndSettle();
   }
@@ -314,7 +308,6 @@ class MockIMEInput {
   TextInputService get imeInput {
     final keyboardService = tester.state(find.byType(KeyboardServiceWidget))
         as KeyboardServiceWidgetState;
-
     return keyboardService.textInputService;
   }
 

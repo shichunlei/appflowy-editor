@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,17 +12,16 @@ void main() async {
     // After
     // [quote] Welcome to AppFlowy Editor 🔥!
     test('mock inputting a ` ` after the > but not dot', () async {
-      unawaited(
-        testFormatCharacterShortcut(
-          formatDoubleQuoteToQuote,
-          '"',
-          1,
-          (result, before, after, editorState) {
-            expect(result, true);
-            expect(after.delta!.toPlainText(), text);
-            expect(after.type, 'quote');
-          },
-        ),
+      testFormatCharacterShortcut(
+        formatDoubleQuoteToQuote,
+        '"',
+        1,
+        (result, before, after, editorState) {
+          expect(result, true);
+          expect(after.delta!.toPlainText(), text);
+          expect(after.type, 'quote');
+        },
+        text: text,
       );
     });
 
@@ -32,17 +30,16 @@ void main() async {
     // After
     // >W|elcome to AppFlowy Editor 🔥!
     test('mock inputting a ` ` in the middle of the node', () async {
-      unawaited(
-        testFormatCharacterShortcut(
-          formatDoubleQuoteToQuote,
-          '"',
-          2,
-          (result, before, after, editorState) {
-            // nothing happens
-            expect(result, false);
-            expect(before.toJson(), after.toJson());
-          },
-        ),
+      testFormatCharacterShortcut(
+        formatDoubleQuoteToQuote,
+        '"',
+        2,
+        (result, before, after, editorState) {
+          // nothing happens
+          expect(result, false);
+          expect(before.toJson(), after.toJson());
+        },
+        text: text,
       );
     });
 

@@ -34,7 +34,7 @@ class _TableColState extends State<TableCol> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> children = [];
+    List<Widget> children = [];
     if (widget.colIdx == 0) {
       children.add(
         TableColBorder(

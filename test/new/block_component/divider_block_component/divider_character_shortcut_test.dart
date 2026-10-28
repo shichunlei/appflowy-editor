@@ -13,7 +13,7 @@ void main() async {
       // [divider]
       test('--- to divider', () async {
         const text = '';
-        await testFormatCharacterShortcut(
+        testFormatCharacterShortcut(
           convertMinusesToDivider,
           '--',
           2,
@@ -36,7 +36,7 @@ void main() async {
       // [divider]
       test('*** to divider', () async {
         const text = '';
-        await testFormatCharacterShortcut(
+        testFormatCharacterShortcut(
           convertStarsToDivider,
           '**',
           2,
@@ -55,7 +55,7 @@ void main() async {
       // [divider]
       test('___ to divider', () async {
         const text = '';
-        await testFormatCharacterShortcut(
+        testFormatCharacterShortcut(
           convertUnderscoreToDivider,
           '__',
           2,

@@ -8,6 +8,7 @@ class AnimatedSelectionAreaPaint extends StatefulWidget {
     super.key,
     required this.rects,
     this.withAnimation = false,
+    s,
   });
 
   final List<Rect> rects;
@@ -22,34 +23,24 @@ class _AnimatedSelectionAreaPaintState extends State<AnimatedSelectionAreaPaint>
     with SingleTickerProviderStateMixin {
   late Animation<double> animation;
   late AnimationController controller;
-  late CurvedAnimation curvedAnimation;
 
   @override
   void initState() {
     super.initState();
 
     if (widget.withAnimation) {
-      curvedAnimation = CurvedAnimation(
-        parent: controller,
-        curve: Curves.bounceInOut,
-      );
       controller = AnimationController(
         duration: const Duration(seconds: 4),
         vsync: this,
       );
-      animation = Tween<double>(begin: 0, end: 1.0).animate(curvedAnimation);
+      animation = Tween<double>(begin: 0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: controller,
+          curve: Curves.bounceInOut,
+        ),
+      );
       controller.repeat();
     }
-  }
-
-  @override
-  void dispose() {
-    if (widget.withAnimation) {
-      curvedAnimation.dispose();
-      controller.dispose();
-    }
-
-    super.dispose();
   }
 
   @override
@@ -79,6 +70,15 @@ class _AnimatedSelectionAreaPaintState extends State<AnimatedSelectionAreaPaint>
       },
     );
   }
+
+  @override
+  void dispose() {
+    if (widget.withAnimation) {
+      controller.dispose();
+    }
+
+    super.dispose();
+  }
 }
 
 class SelectionAreaPaint extends StatelessWidget {
@@ -86,12 +86,10 @@ class SelectionAreaPaint extends StatelessWidget {
     super.key,
     required this.rects,
     required this.selectionColor,
-    this.radius = 0.0,
   });
 
   final List<Rect> rects;
   final Color selectionColor;
-  final double radius;
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +97,6 @@ class SelectionAreaPaint extends StatelessWidget {
       painter: SelectionAreaPainter(
         rects: rects,
         selectionColor: selectionColor,
-        radius: radius,
       ),
     );
   }
@@ -109,12 +106,10 @@ class SelectionAreaPainter extends CustomPainter {
   SelectionAreaPainter({
     required this.rects,
     required this.selectionColor,
-    this.radius = 0.0,
   });
 
   final List<Rect> rects;
   final Color selectionColor;
-  final double radius;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -122,32 +117,22 @@ class SelectionAreaPainter extends CustomPainter {
       ..color = selectionColor
       ..style = PaintingStyle.fill;
 
-    final rRect = RRect.fromRectAndRadius;
-
     for (var rect in rects) {
       // if rect.width is 0, we draw a small rect to indicate the selection area
       if (rect.width <= 0) {
         rect = Rect.fromLTWH(rect.left, rect.top, 8.0, rect.height);
       }
-      if (radius > 0) {
-        canvas.drawRRect(
-          rRect(rect, Radius.circular(radius)),
-          paint,
-        );
-      } else {
-        canvas.drawRect(
-          rect,
-          paint,
-        );
-      }
+      canvas.drawRect(
+        rect,
+        paint,
+      );
     }
   }
 
   @override
   bool shouldRepaint(SelectionAreaPainter oldDelegate) {
     return selectionColor != oldDelegate.selectionColor ||
-        !const DeepCollectionEquality().equals(rects, oldDelegate.rects) ||
-        radius != oldDelegate.radius;
+        !const DeepCollectionEquality().equals(rects, oldDelegate.rects);
   }
 }
 

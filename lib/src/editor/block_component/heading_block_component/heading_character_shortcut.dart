@@ -10,7 +10,7 @@ import 'package:appflowy_editor/appflowy_editor.dart';
 CharacterShortcutEvent formatSignToHeading = CharacterShortcutEvent(
   key: 'format sign to heading list',
   character: ' ',
-  handler: (editorState) async => formatMarkdownSymbol(
+  handler: (editorState) async => await formatMarkdownSymbol(
     editorState,
     (node) => true,
     (_, text, selection) {
@@ -23,7 +23,6 @@ CharacterShortcutEvent formatSignToHeading = CharacterShortcutEvent(
     },
     (text, node, delta) {
       final numberOfSign = text.split('').length;
-
       return [
         headingNode(
           level: numberOfSign,
@@ -59,10 +58,9 @@ CharacterShortcutEvent insertNewLineAfterHeading = CharacterShortcutEvent(
     final transaction = editorState.transaction;
     transaction.insertNode(selection.start.path, paragraphNode());
     transaction.afterSelection = Selection.collapsed(
-      Position(path: selection.start.path.next),
+      Position(path: selection.start.path.next, offset: 0),
     );
     await editorState.apply(transaction);
-
     return true;
   },
 );

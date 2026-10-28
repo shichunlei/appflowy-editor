@@ -107,7 +107,6 @@ mixin NestedBlockComponentStatefulWidgetMixin<
         );
       }
     }
-
     return configuration.indentPadding(node, direction);
   }
 
@@ -128,12 +127,9 @@ mixin NestedBlockComponentStatefulWidgetMixin<
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: configuration.margin(node),
-      child: node.children.isEmpty
-          ? buildComponent(context)
-          : buildComponentWithChildren(context),
-    );
+    return node.children.isEmpty
+        ? buildComponent(context, withBackgroundColor: true)
+        : buildComponentWithChildren(context);
   }
 
   Widget buildComponentWithChildren(BuildContext context) {

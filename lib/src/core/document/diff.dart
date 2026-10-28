@@ -8,20 +8,9 @@ List<Operation> diffDocuments(Document oldDocument, Document newDocument) {
 }
 
 List<Operation> diffNodes(Node oldNode, Node newNode) {
-  final List<Operation> operations = [];
+  List<Operation> operations = [];
 
-  if (oldNode.type != newNode.type && oldNode.path.isNotEmpty) {
-    operations.add(
-      UpdateNodeTypeOperation(
-        oldNode.path,
-        oldNode.id,
-        newNode.type,
-        oldNode.type,
-        newNode.attributes,
-        oldNode.attributes,
-      ),
-    );
-  } else if (!_equality.equals(oldNode.attributes, newNode.attributes)) {
+  if (!_equality.equals(oldNode.attributes, newNode.attributes)) {
     operations.add(
       UpdateOperation(oldNode.path, newNode.attributes, oldNode.attributes),
     );
@@ -82,7 +71,6 @@ List<Operation> diffNodes(Node oldNode, Node newNode) {
         }
       }
     }
-
     return combinedOperations;
   }
 
@@ -111,7 +99,6 @@ List<Operation> diffNodes(Node oldNode, Node newNode) {
         }
       }
     }
-
     return combinedOperations;
   }
 

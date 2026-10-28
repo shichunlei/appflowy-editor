@@ -38,7 +38,6 @@ class MarkdownTodoListParserV2 extends CustomMarkdownParser {
     }
 
     final deltaDecoder = DeltaMarkdownDecoder();
-
     return [
       todoListNode(
         checked: checked,
@@ -53,6 +52,7 @@ class MarkdownTodoListParserV2 extends CustomMarkdownParser {
             : parseElementChildren(
                 [last],
                 parsers,
+                listType: MarkdownListType.unknown,
               ),
       ),
     ];

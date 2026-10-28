@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -74,7 +73,7 @@ void main() async {
         editor.selection,
         Selection.single(path: [lines - 1], startOffset: 0),
       );
-      final lastNode = editor.nodeAtPath([lines - 1]);
+      var lastNode = editor.nodeAtPath([lines - 1]);
       expect(lastNode != null, true);
       expect(lastNode?.type, 'paragraph');
       expect(lastNode?.delta?.toPlainText(), text);
@@ -122,12 +121,12 @@ void main() async {
 
     testWidgets('Presses enter key in multiple selection from top to bottom',
         (tester) async {
-      unawaited(_testMultipleSelection(tester, true));
+      _testMultipleSelection(tester, true);
     });
 
     testWidgets('Presses enter key in multiple selection from bottom to top',
         (tester) async {
-      unawaited(_testMultipleSelection(tester, false));
+      _testMultipleSelection(tester, false);
     });
 
     testWidgets('Presses enter key in the first line', (tester) async {
@@ -290,7 +289,7 @@ Future<void> _testMultipleSelection(
   //
   const text = 'Welcome to Appflowy 😁';
   final editor = tester.editor;
-  final lines = 4;
+  var lines = 4;
 
   editor.addParagraphs(lines, initialText: text);
 

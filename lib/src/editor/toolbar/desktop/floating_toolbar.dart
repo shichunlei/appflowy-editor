@@ -100,17 +100,13 @@ class _FloatingToolbarState extends State<FloatingToolbar>
 
   @override
   void dispose() {
-    Debounce.cancel(_debounceKey);
-
-    _toolbarContainer?.remove();
-    _toolbarContainer?.dispose();
-    _toolbarContainer = null;
     editorState.selectionNotifier.removeListener(_onSelectionChanged);
     widget.editorScrollController.offsetNotifier.removeListener(
       _onScrollPositionChanged,
     );
     WidgetsBinding.instance.removeObserver(this);
 
+    _clear();
     _toolbarWidget = null;
 
     super.dispose();
@@ -168,6 +164,8 @@ class _FloatingToolbarState extends State<FloatingToolbar>
   void _onScrollPositionChanged() {
     _clear();
 
+    // TODO: optimize the toolbar showing logic, making it more smooth.
+    // A quick idea: based on the scroll controller's offset to display the toolbar.
     _showAfterDelay();
   }
 
@@ -215,7 +213,6 @@ class _FloatingToolbarState extends State<FloatingToolbar>
     if (nodes.isEmpty ||
         nodes.every((node) {
           final delta = node.delta;
-
           return delta == null || delta.isEmpty;
         })) {
       return;
@@ -236,7 +233,6 @@ class _FloatingToolbarState extends State<FloatingToolbar>
     _toolbarContainer = OverlayEntry(
       builder: (context) {
         final child = _buildToolbar(context);
-
         return widget.toolbarBuilder
                 ?.call(context, child, _clear, isMetricsChanged) ??
             Positioned(
@@ -252,7 +248,7 @@ class _FloatingToolbarState extends State<FloatingToolbar>
 
   Widget _buildToolbar(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool needRefreshToolbar = brightness != this.brightness;
+    bool needRefreshToolbar = brightness != this.brightness;
     if (needRefreshToolbar) {
       this.brightness = brightness;
     }
@@ -273,7 +269,6 @@ class _FloatingToolbarState extends State<FloatingToolbar>
         placeHolderBuilder: widget.placeHolderBuilder,
       );
     }
-
     return _toolbarWidget!;
   }
 

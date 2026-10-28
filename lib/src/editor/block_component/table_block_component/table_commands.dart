@@ -100,7 +100,6 @@ CommandShortcutEventHandler _enterInTableCellHandler = (editorState) {
       );
     }
   }
-
   return KeyEventResult.handled;
 };
 
@@ -119,10 +118,8 @@ CommandShortcutEventHandler _leftInTableCellHandler = (editorState) {
         ),
       );
     }
-
     return KeyEventResult.handled;
   }
-
   return KeyEventResult.ignored;
 };
 
@@ -140,10 +137,8 @@ CommandShortcutEventHandler _rightInTableCellHandler = (editorState) {
         ),
       );
     }
-
     return KeyEventResult.handled;
   }
-
   return KeyEventResult.ignored;
 };
 
@@ -161,10 +156,8 @@ CommandShortcutEventHandler _upInTableCellHandler = (editorState) {
         Selection.single(path: target.path, startOffset: off),
       );
     }
-
     return KeyEventResult.handled;
   }
-
   return KeyEventResult.ignored;
 };
 
@@ -182,10 +175,8 @@ CommandShortcutEventHandler _downInTableCellHandler = (editorState) {
         Selection.single(path: target.path, startOffset: off),
       );
     }
-
     return KeyEventResult.handled;
   }
-
   return KeyEventResult.ignored;
 };
 
@@ -203,10 +194,8 @@ CommandShortcutEventHandler _tabInTableCellHandler = (editorState) {
         );
       }
     }
-
     return KeyEventResult.handled;
   }
-
   return KeyEventResult.ignored;
 };
 
@@ -224,10 +213,8 @@ CommandShortcutEventHandler _shiftTabInTableCellHandler = (editorState) {
         );
       }
     }
-
     return KeyEventResult.handled;
   }
-
   return KeyEventResult.ignored;
 };
 
@@ -256,7 +243,6 @@ Iterable<Node> _inTableNodes(EditorState editorState) {
     return [];
   }
   final nodes = editorState.getNodesInSelection(selection);
-
   return nodes.where(
     (node) => node.parent?.type.contains(TableBlockKeys.type) ?? false,
   );
@@ -286,10 +272,10 @@ Node? _getNextNode(Iterable<Node> nodes, int colDiff, int rowDiff) {
       table.children.last.attributes[TableCellBlockKeys.rowPosition] + 1;
 
   // Calculate the next column index, considering the column difference and wrapping around with modulo.
-  final nextCol = (col + colDiff) % numCols;
+  var nextCol = (col + colDiff) % numCols;
 
   // Calculate the next row index, taking into account the row difference and adjusting for additional rows due to column change.
-  final nextRow = row + rowDiff + ((col + colDiff) ~/ numCols);
+  var nextRow = row + rowDiff + ((col + colDiff) ~/ numCols);
 
   return isValidPosition(nextCol, nextRow, numCols, numRows)
       ? getCellNode(table, nextCol, nextRow)
@@ -311,10 +297,10 @@ Node? _getPreviousNode(Iterable<Node> nodes, int colDiff, int rowDiff) {
       table.children.last.attributes[TableCellBlockKeys.rowPosition] + 1;
 
   // Calculate the previous column index, ensuring it wraps within the table boundaries using modulo.
-  final prevCol = (col - colDiff + numCols) % numCols;
+  var prevCol = (col - colDiff + numCols) % numCols;
 
   // Calculate the previous row index, considering table boundaries and adjusting for potential column underflow.
-  final prevRow = row - rowDiff - ((col - colDiff) < 0 ? 1 : 0);
+  var prevRow = row - rowDiff - ((col - colDiff) < 0 ? 1 : 0);
 
   return isValidPosition(prevCol, prevRow, numCols, numRows)
       ? getCellNode(table, prevCol, prevRow)

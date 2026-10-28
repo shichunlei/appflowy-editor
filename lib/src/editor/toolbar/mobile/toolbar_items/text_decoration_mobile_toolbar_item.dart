@@ -1,17 +1,17 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
+/// The mobile menu for bold, italic, underline, and strikethrough formatting.
 final textDecorationMobileToolbarItem = MobileToolbarItem.withMenu(
-  itemIconBuilder: (context, __, ___) => AFMobileIcon(
+  itemIconBuilder: (context, _, _) => AFMobileIcon(
     afMobileIcons: AFMobileIcons.textDecoration,
     color: MobileToolbarTheme.of(context).iconColor,
   ),
-  itemMenuBuilder: (_, editorState, __) {
+  itemMenuBuilder: (_, editorState, _) {
     final selection = editorState.selection;
     if (selection == null) {
       return const SizedBox.shrink();
     }
-
     return _TextDecorationMenu(editorState, selection);
   },
 );
@@ -52,7 +52,6 @@ class _TextDecorationMenuState extends State<_TextDecorationMenu> {
       name: AppFlowyRichTextKeys.strikethrough,
     ),
   ];
-
   @override
   Widget build(BuildContext context) {
     final style = MobileToolbarTheme.of(context);
@@ -101,12 +100,13 @@ class _TextDecorationMenuState extends State<_TextDecorationMenu> {
 }
 
 class TextDecorationUnit {
+  final AFMobileIcons icon;
+  final String label;
+  final String name;
+
   TextDecorationUnit({
     required this.icon,
     required this.label,
     required this.name,
   });
-  final AFMobileIcons icon;
-  final String label;
-  final String name;
 }

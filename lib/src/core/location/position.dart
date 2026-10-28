@@ -1,6 +1,9 @@
 import 'package:appflowy_editor/src/core/document/path.dart';
 
 class Position {
+  final Path path;
+  final int offset;
+
   Position({
     required this.path,
     this.offset = 0,
@@ -19,8 +22,6 @@ class Position {
       offset: offset ?? 0,
     );
   }
-  final Path path;
-  final int offset;
 
   @override
   bool operator ==(Object other) {

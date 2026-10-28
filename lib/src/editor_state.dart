@@ -15,9 +15,7 @@ typedef EditorTransactionValue = (
 );
 
 class EditorStateDebugInfo {
-  EditorStateDebugInfo({
-    this.debugPaintSizeEnabled = false,
-  });
+  EditorStateDebugInfo({this.debugPaintSizeEnabled = false});
 
   /// Enable the debug paint size for selection handle.
   ///
@@ -32,56 +30,44 @@ const selectionExtraInfoDoNotAttachTextService =
     'selectionExtraInfoDoNotAttachTextService';
 const _selectionDragModeKey = 'selection_drag_mode';
 
-/// The border radius for selection area rendering.
-/// The type of this value is double.
-const selectionExtraInfoSelectionRadius = 'selectionExtraInfoSelectionRadius';
-
+/// Immutable transaction history and projection options; owns no resources.
+///
+/// ```dart
+/// import 'package:appflowy_editor/appflowy_editor.dart';
+/// const options = ApplyOptions(recordUndo: false, inMemoryUpdate: true);
+/// ```
 class ApplyOptions {
+  /// [recordUndo] defaults to true and records local changes for undo.
+  /// [recordRedo] defaults to false and records inverse transactions for redo
+  /// when undo recording is disabled. [inMemoryUpdate] defaults to false and
+  /// marks an in-memory projection. [isRedo] defaults to false; UndoManager
+  /// sets it for replay, preserving pending redo and creating a separate undo
+  /// entry. It only affects history when [recordUndo] is true. No I/O or throws.
   const ApplyOptions({
     this.recordUndo = true,
     this.recordRedo = false,
-    this.source,
     this.inMemoryUpdate = false,
+    this.isRedo = false,
   });
 
-  /// Whether the transaction should be recorded into the undo stack.
-  @Deprecated('Use [source] instead')
+  /// This flag indicates that
+  /// whether the transaction should be recorded into
+  /// the undo stack
   final bool recordUndo;
 
-  @Deprecated('Use [source] instead')
+  /// Records an inverse transaction for redo when undo recording is disabled.
   final bool recordRedo;
 
-  /// The source of the transaction. When set, takes precedence over
-  /// the legacy `recordUndo` and `recordRedo` flags for determining
-  /// how the transaction is recorded in the undo/redo history.
-  final TransactionSource? source;
+  /// Marks UndoManager replay; preserves remaining redo and its command boundary.
+  /// Normal new user edits use false and invalidate pending redo as usual.
+  final bool isRedo;
 
   /// This flag used to determine whether the transaction is in-memory update.
   final bool inMemoryUpdate;
-
-  /// Returns the resolved [TransactionSource].
-  /// Prefers explicit [source], falls back to legacy boolean flags.
-  ///
-  /// Legacy mapping (for backward compatibility):
-  /// - `recordRedo: true` → [TransactionSource.undo] (records *to* redo stack)
-  /// - `recordUndo: true` → [TransactionSource.userEdit]
-  /// - both false → [TransactionSource.none]
-  TransactionSource get resolvedSource {
-    if (source != null) return source!;
-    // ignore: deprecated_member_use_from_same_package
-    if (recordRedo) return TransactionSource.undo;
-    // ignore: deprecated_member_use_from_same_package
-    if (recordUndo) return TransactionSource.userEdit;
-
-    return TransactionSource.none;
-  }
 }
 
 @Deprecated('use SelectionUpdateReason instead')
-enum CursorUpdateReason {
-  uiEvent,
-  others,
-}
+enum CursorUpdateReason { uiEvent, others }
 
 enum SelectionUpdateReason {
   uiEvent, // like mouse click, keyboard event
@@ -91,15 +77,9 @@ enum SelectionUpdateReason {
   searchHighlight, // Highlighting search results
 }
 
-enum SelectionType {
-  inline,
-  block,
-}
+enum SelectionType { inline, block }
 
-enum TransactionTime {
-  before,
-  after,
-}
+enum TransactionTime { before, after }
 
 /// The state of the editor.
 ///
@@ -118,29 +98,35 @@ enum TransactionTime {
 /// all the mutations should be applied through [Transaction].
 ///
 /// Mutating the document with document's API is not recommended.
+///
+/// ```dart
+/// import 'package:appflowy_editor/appflowy_editor.dart';
+/// final editor = EditorState.blank();
+/// editor.transactionGuard = (transaction) => true;
+/// editor.localTransactionsPaused = true; // Keep input connected while projecting.
+/// editor.localTransactionsPaused = false;
+/// // A host may also set selectionInputGuard and blockDecorator.
+/// editor.dispose();
+/// ```
 class EditorState {
+  /// Own [document] until disposal. [minHistoryItemDuration] defaults to 50 ms
+  /// between local history groups; [maxHistoryItemSize] defaults to 200 when
+  /// null. Input permission notifications invalidate awaiting local input.
   EditorState({
     required this.document,
     this.minHistoryItemDuration = const Duration(milliseconds: 50),
     int? maxHistoryItemSize,
   }) {
+    editableNotifier.addListener(_invalidateLocalInput);
     undoManager = UndoManager(maxHistoryItemSize ?? 200);
     undoManager.state = this;
   }
 
   @Deprecated('use EditorState.blank() instead')
-  EditorState.empty()
-      : this(
-          document: Document.blank(),
-        );
+  EditorState.empty() : this(document: Document.blank());
 
-  EditorState.blank({
-    bool withInitialText = true,
-  }) : this(
-          document: Document.blank(
-            withInitialText: withInitialText,
-          ),
-        );
+  EditorState.blank({bool withInitialText = true})
+    : this(document: Document.blank(withInitialText: withInitialText));
 
   final Document document;
 
@@ -150,14 +136,80 @@ class EditorState {
   /// Whether the editor is editable.
   ValueNotifier<bool> editableNotifier = ValueNotifier(true);
 
+  /// Whether the host permits editing, independently of temporary input pauses.
   bool get editable => editableNotifier.value;
 
+  /// Apply host permission [value]; real changes invalidate pending local input.
   set editable(bool value) {
     if (value == editable) {
       return;
     }
     editableNotifier.value = value;
   }
+
+  /// Invalidate pending local input when the host updates the permission
+  /// notifier, including writes made directly to its public value.
+  void _invalidateLocalInput() {
+    _localTransactionEpoch++;
+  }
+
+  /// Temporary host-owned pause for local writes. Defaults to false and does
+  /// not change editability, selection, focus or the existing input connection.
+  /// The host must balance its own nested work before clearing this value.
+  bool get localTransactionsPaused => _localTransactionsPaused;
+
+  /// Pause or resume local transactions with [value]. Every actual transition
+  /// invalidates asynchronous input started before it, including a complete
+  /// pause/resume cycle. Remote projections bypass this local-only restriction.
+  set localTransactionsPaused(bool value) {
+    if (_localTransactionsPaused == value) return;
+    _localTransactionsPaused = value;
+    _localTransactionEpoch++;
+  }
+
+  /// Whether new local work is currently permitted before per-block checks.
+  /// This does not control input attachment; pauses keep the keyboard connected.
+  bool get canAcceptLocalTransactions =>
+      !isDisposed && editable && !_localTransactionsPaused;
+
+  /// Monotonic version of local input permissions and pause transitions.
+  /// Asynchronous input must capture this version and reject a changed version
+  /// after awaiting; [isDisposed] must also be checked before using the editor.
+  int get localTransactionEpoch => _localTransactionEpoch;
+
+  /// The host owns this pause independently of block-level write policies.
+  bool _localTransactionsPaused = false;
+
+  /// Invalidates callbacks even when a pause or permission change is reversed.
+  int _localTransactionEpoch = 0;
+
+  /// Optional host-owned block decoration. The borrowed context, node and child
+  /// must retain their editing/selection identity; null renders the child directly.
+  Widget Function(BuildContext context, Node node, Widget child)?
+  blockDecorator;
+
+  /// Optional synchronous local-write policy, owned by the host. Null allows all
+  /// otherwise editable transactions. The borrowed transaction is inspected before
+  /// mutation and history recording; remote projection bypasses this policy.
+  bool Function(Transaction transaction)? transactionGuard;
+
+  /// Optional per-selection input policy. Null uses document editability; false
+  /// keeps selection/copy available while preventing a text-input connection.
+  bool Function(Selection selection)? selectionInputGuard;
+
+  /// Check borrowed [transaction] before local mutation or popping a history item.
+  /// Policies must be synchronous and must not mutate the document or history.
+  bool canApplyTransaction(Transaction transaction) =>
+      canAcceptLocalTransactions &&
+      (transactionGuard?.call(transaction) ?? true);
+
+  /// Whether borrowed [selection] may attach an input connection. A null selection
+  /// has no editable target; the host retains ownership of both policy callbacks.
+  bool canInputAt(Selection? selection) =>
+      !isDisposed &&
+      editable &&
+      selection != null &&
+      (selectionInputGuard?.call(selection) ?? true);
 
   /// Whether the editor should disable auto scroll.
   bool disableAutoScroll = false;
@@ -288,7 +340,6 @@ class EditorState {
   Transaction get transaction {
     final transaction = Transaction(document: document);
     transaction.beforeSelection = selection;
-
     return transaction;
   }
 
@@ -304,7 +355,6 @@ class EditorState {
   /// The rules to apply to the document.
   List<DocumentRule> get documentRules => _documentRules;
   List<DocumentRule> _documentRules = [];
-
   set documentRules(List<DocumentRule> value) {
     _documentRules = value;
 
@@ -343,12 +393,11 @@ class EditorState {
   }
 
   RenderBox? get renderBox {
-    final renderObject =
-        service.scrollServiceKey.currentContext?.findRenderObject();
+    final renderObject = service.scrollServiceKey.currentContext
+        ?.findRenderObject();
     if (renderObject != null && renderObject is RenderBox) {
       return renderObject;
     }
-
     return null;
   }
 
@@ -394,7 +443,6 @@ class EditorState {
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       completer.complete();
     });
-
     return completer.future;
   }
 
@@ -406,8 +454,11 @@ class EditorState {
 
   bool isDisposed = false;
 
+  /// Reject future work and release owned document/selection subscriptions.
+  /// The host must first unmount its widgets and finish outstanding projections.
   void dispose() {
     isDisposed = true;
+    editableNotifier.removeListener(_invalidateLocalInput);
     _observer.close();
     _asyncObserver.close();
     _debouncedSealHistoryItemTimer?.cancel();
@@ -428,19 +479,29 @@ class EditorState {
   ///
   /// The withUpdateSelection is used to determine whether the editor
   /// should update the selection after applying the transaction.
+  /// Apply borrowed [transaction] locally or as authoritative [isRemote] projection.
+  /// [options] controls history recording, [withUpdateSelection] controls the final
+  /// selection update, and [skipHistoryDebounce] seals this change independently.
+  /// Local host-policy rejection performs no mutation or history recording; remote
+  /// projection bypasses editability, local pauses and host write policies, so
+  /// readonly views still receive authoritative content. Disposed editors reject
+  /// both paths. With [withUpdateSelection] false, remote operations still update
+  /// the tree and compute transformed paths but do not publish an intermediate
+  /// selection; the caller owns restoring its stable selection afterwards.
+  /// The Future completes after processing.
   Future<void> apply(
     Transaction transaction, {
     bool isRemote = false,
-    ApplyOptions options = const ApplyOptions(),
+    ApplyOptions options = const ApplyOptions(recordUndo: true),
     bool withUpdateSelection = true,
     bool skipHistoryDebounce = false,
-    bool skipEditableCheck = false,
   }) async {
-    if (isDisposed) {
-      return;
-    }
-
-    if (!editable && !skipEditableCheck) {
+    if (isDisposed) return;
+    if (!isRemote && !canApplyTransaction(transaction)) {
+      // Materialize queued text deltas without applying them. Their upstream
+      // compose cache is shared, so leaving a rejected delta there would let a
+      // later transaction apply it after the pause has ended.
+      if (transaction.markNeedsComposing) transaction.compose();
       return;
     }
 
@@ -453,7 +514,8 @@ class EditorState {
 
     if (isRemote) {
       _selectionUpdateReason = SelectionUpdateReason.remote;
-      selection = _applyTransactionFromRemote(transaction);
+      final remoteSelection = _applyTransactionFromRemote(transaction);
+      if (withUpdateSelection) selection = remoteSelection;
     } else {
       // broadcast to other users here, before applying the transaction
       if (!_observer.isClosed) {
@@ -464,6 +526,9 @@ class EditorState {
         _asyncObserver.add((TransactionTime.before, transaction, options));
       }
 
+      if (transaction.operations.isEmpty || !canApplyTransaction(transaction)) {
+        return;
+      }
       _applyTransactionInLocal(transaction);
 
       // broadcast to other users here, after applying the transaction
@@ -526,10 +591,7 @@ class EditorState {
     return [];
   }
 
-  List<Node> getSelectedNodes({
-    Selection? selection,
-    bool withCopy = true,
-  }) {
+  List<Node> getSelectedNodes({Selection? selection, bool withCopy = true}) {
     List<Node> res = [];
     selection ??= this.selection;
     if (selection == null) {
@@ -550,17 +612,15 @@ class EditorState {
     if (res.isNotEmpty) {
       var delta = res.first.delta;
       if (delta != null) {
-        res.first.updateAttributes(
-          {
-            ...res.first.attributes,
-            blockComponentDelta: delta
-                .slice(
-                  selection.startIndex,
-                  selection.isSingle ? selection.endIndex : delta.length,
-                )
-                .toJson(),
-          },
-        );
+        res.first.updateAttributes({
+          ...res.first.attributes,
+          blockComponentDelta: delta
+              .slice(
+                selection.startIndex,
+                selection.isSingle ? selection.endIndex : delta.length,
+              )
+              .toJson(),
+        });
       }
 
       var node = res.last;
@@ -575,27 +635,17 @@ class EditorState {
               attributes: {
                 ...node.attributes,
                 blockComponentDelta: delta
-                    .slice(
-                      0,
-                      selection.endIndex,
-                    )
+                    .slice(0, selection.endIndex)
                     .toJson(),
               },
             ),
           );
           node.unlink();
         } else {
-          node.updateAttributes(
-            {
-              ...node.attributes,
-              blockComponentDelta: delta
-                  .slice(
-                    0,
-                    selection.endIndex,
-                  )
-                  .toJson(),
-            },
-          );
+          node.updateAttributes({
+            ...node.attributes,
+            blockComponentDelta: delta.slice(0, selection.endIndex).toJson(),
+          });
         }
       }
     }
@@ -626,10 +676,7 @@ class EditorState {
         );
         if (rect != null) {
           rects.add(
-            selectable.transformRectToGlobal(
-              rect,
-              shiftWithBaseOffset: true,
-            ),
+            selectable.transformRectToGlobal(rect, shiftWithBaseOffset: true),
           );
         }
       }
@@ -664,9 +711,7 @@ class EditorState {
     _observer.close();
   }
 
-  void updateAutoScroller(
-    ScrollableState scrollableState,
-  ) {
+  void updateAutoScroller(ScrollableState scrollableState) {
     if (this.scrollableState != scrollableState) {
       autoScroller?.stopAutoScroll();
       final bool isDesktopOrWeb = PlatformExtension.isDesktopOrWeb;
@@ -681,7 +726,8 @@ class EditorState {
           _notifyScrollViewScrolledListeners();
           if (!isDesktopOrWeb) {
             final dynamic dragMode = selectionExtraInfo?[_selectionDragModeKey];
-            final bool isDraggingSelection = dragMode != null &&
+            final bool isDraggingSelection =
+                dragMode != null &&
                 dragMode.toString() != 'MobileSelectionDragMode.none';
             if (!isDraggingSelection) {
               return;
@@ -699,16 +745,26 @@ class EditorState {
     }
   }
 
+  /// Records borrowed [transaction] operations according to [options].
+  /// [skipDebounce] seals normal edits immediately; otherwise the owned timer
+  /// seals them after the history interval. Redo always gets its own sealed
+  /// entry without clearing remaining redo; remote projection never calls this.
+  /// Does not execute operations or publish document changes.
+  /// A borrowed external history owner suppresses both local path stacks.
   void _recordRedoOrUndo(
     ApplyOptions options,
     Transaction transaction,
     bool skipDebounce,
   ) {
-    final source = options.resolvedSource;
-    undoManager.record(transaction, source);
-
-    // Only debounce-seal for user edits (grouping consecutive keystrokes).
-    if (source == TransactionSource.userEdit) {
+    if (undoManager.externalHistory != null) return;
+    if (options.recordUndo) {
+      final undoItem = undoManager.getUndoHistoryItem(isRedo: options.isRedo);
+      undoItem.addAll(transaction.operations);
+      if (undoItem.beforeSelection == null &&
+          transaction.beforeSelection != null) {
+        undoItem.beforeSelection = transaction.beforeSelection;
+      }
+      undoItem.afterSelection = transaction.afterSelection;
       if (skipDebounce && undoManager.undoStack.isNonEmpty) {
         AppFlowyEditorLog.editor.debug('Seal history item');
         final last = undoManager.undoStack.last;
@@ -716,6 +772,12 @@ class EditorState {
       } else {
         _debouncedSealHistoryItem();
       }
+    } else if (options.recordRedo) {
+      final redoItem = HistoryItem();
+      redoItem.addAll(transaction.operations);
+      redoItem.beforeSelection = transaction.beforeSelection;
+      redoItem.afterSelection = transaction.afterSelection;
+      undoManager.redoStack.push(redoItem);
     }
   }
 
@@ -744,8 +806,6 @@ class EditorState {
         if (!mapEquals(op.attributes, op.oldAttributes)) {
           document.update(op.path, op.attributes);
         }
-      } else if (op is UpdateNodeTypeOperation) {
-        _applyUpdateNodeTypeOperation(op);
       } else if (op is DeleteOperation) {
         document.delete(op.path, op.nodes.length);
       } else if (op is UpdateTextOperation) {
@@ -774,8 +834,6 @@ class EditorState {
             );
           }
         }
-      } else if (op is UpdateNodeTypeOperation) {
-        _applyUpdateNodeTypeOperation(op);
       } else if (op is UpdateOperation) {
         document.update(op.path, op.attributes);
       } else if (op is DeleteOperation) {
@@ -786,9 +844,7 @@ class EditorState {
               start: selection.start.copyWith(
                 path: selection.start.path.previous,
               ),
-              end: selection.end.copyWith(
-                path: selection.end.path.previous,
-              ),
+              end: selection.end.copyWith(path: selection.end.path.previous),
             );
           }
         }
@@ -798,33 +854,5 @@ class EditorState {
     }
 
     return selection;
-  }
-
-  bool _applyUpdateNodeTypeOperation(UpdateNodeTypeOperation op) {
-    final node = _resolveUpdateNodeTypeTarget(op);
-    if (node == null) {
-      return false;
-    }
-
-    return document.updateNodeType(node.path, op.type, op.attributes);
-  }
-
-  Node? _resolveUpdateNodeTypeTarget(UpdateNodeTypeOperation op) {
-    final pathNode = document.nodeAtPath(op.path);
-    if (op.nodeId.isEmpty || pathNode?.id == op.nodeId) {
-      return pathNode;
-    }
-
-    final iterator = NodeIterator(
-      document: document,
-      startNode: document.root,
-    );
-    while (iterator.moveNext()) {
-      if (iterator.current.id == op.nodeId) {
-        return iterator.current;
-      }
-    }
-
-    return null;
   }
 }

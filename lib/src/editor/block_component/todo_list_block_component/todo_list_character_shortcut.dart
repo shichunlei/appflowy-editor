@@ -86,7 +86,7 @@ CharacterShortcutEvent formatHyphenFilledBracketsToCheckedBox =
 CharacterShortcutEvent insertNewLineAfterTodoList = CharacterShortcutEvent(
   key: 'insert new block after todo list',
   character: '\n',
-  handler: (editorState) async => insertNewLineInType(
+  handler: (editorState) async => await insertNewLineInType(
     editorState,
     'todo_list',
     attributes: {
@@ -95,6 +95,11 @@ CharacterShortcutEvent insertNewLineAfterTodoList = CharacterShortcutEvent(
   ),
 );
 
+/// Converts [symbol], either `[]` or `-[]`, into an unchecked todo item.
+///
+/// Uses the selection in the borrowed [editorState] and removes [symbol] from
+/// the text. Completes after applying the transaction, returning `false` when
+/// the selection is absent, expanded, or does not match an eligible text node.
 Future<bool> _formatSymbolToUncheckedBox({
   required EditorState editorState,
   required String symbol,
@@ -104,7 +109,7 @@ Future<bool> _formatSymbolToUncheckedBox({
   return formatMarkdownSymbol(
     editorState,
     (node) => node.type != 'todo_list',
-    (_, text, __) => text == symbol,
+    (_, text, _) => text == symbol,
     (_, node, delta) => [
       node.copyWith(
         type: TodoListBlockKeys.type,
@@ -118,6 +123,11 @@ Future<bool> _formatSymbolToUncheckedBox({
   );
 }
 
+/// Converts [symbol], either `[x]` or `-[x]`, into a checked todo item.
+///
+/// Uses the selection in the borrowed [editorState] and removes [symbol] from
+/// the text. Completes after applying the transaction, returning `false` when
+/// the selection is absent, expanded, or does not match an eligible text node.
 Future<bool> _formatSymbolToCheckedBox({
   required EditorState editorState,
   required String symbol,
@@ -127,7 +137,7 @@ Future<bool> _formatSymbolToCheckedBox({
   return formatMarkdownSymbol(
     editorState,
     (node) => node.type != 'todo_list',
-    (_, text, __) => text == symbol,
+    (_, text, _) => text == symbol,
     (_, node, delta) => [
       node.copyWith(
         type: TodoListBlockKeys.type,

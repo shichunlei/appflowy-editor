@@ -1,17 +1,17 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
+/// The mobile menu for converting selected blocks to headings, lists, or quotes.
 final blocksMobileToolbarItem = MobileToolbarItem.withMenu(
-  itemIconBuilder: (context, __, ___) => AFMobileIcon(
+  itemIconBuilder: (context, _, _) => AFMobileIcon(
     afMobileIcons: AFMobileIcons.list,
     color: MobileToolbarTheme.of(context).iconColor,
   ),
-  itemMenuBuilder: (_, editorState, __) {
+  itemMenuBuilder: (_, editorState, _) {
     final selection = editorState.selection;
     if (selection == null) {
       return const SizedBox.shrink();
     }
-
     return _BlocksMenu(editorState, selection);
   },
 );
@@ -132,14 +132,15 @@ class _BlocksMenuState extends State<_BlocksMenu> {
 }
 
 class _ListUnit {
+  final AFMobileIcons icon;
+  final String label;
+  final String name;
+  final int? level;
+
   _ListUnit({
     required this.icon,
     required this.label,
     required this.name,
     this.level,
   });
-  final AFMobileIcons icon;
-  final String label;
-  final String name;
-  final int? level;
 }

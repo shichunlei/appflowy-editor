@@ -46,7 +46,7 @@ void main() async {
       final arrowLeftTest = ArrowTest(
         text: text,
         initialSel: selection,
-        expSel: selection.collapse(),
+        expSel: selection.collapse(atStart: false),
       );
 
       await runArrowRightTest(tester, arrowLeftTest);

@@ -13,7 +13,7 @@ void main() {
       final editor = tester.editor..addParagraphs(3, initialText: text);
       await editor.startTesting();
 
-      final selection = Selection.single(
+      var selection = Selection.single(
         path: [1],
         startOffset: 2,
         endOffset: text.length - 2,
@@ -51,7 +51,7 @@ void main() {
 
       const originalPath = 1;
 
-      final selection =
+      var selection =
           Selection.collapsed(Position(path: [originalPath], offset: 2));
 
       await editor.updateSelection(selection);

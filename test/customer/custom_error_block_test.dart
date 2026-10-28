@@ -44,6 +44,7 @@ class ErrorEditor extends StatelessWidget {
       home: Scaffold(
         body: SafeArea(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Container(
@@ -77,7 +78,6 @@ class ErrorBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
-
     return ErrorBlockComponentWidget(
       key: node.key,
       node: node,

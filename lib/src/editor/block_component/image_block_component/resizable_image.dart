@@ -91,7 +91,6 @@ class _ResizableImageState extends State<ResizableImage> {
                   loadingProgress.expectedTotalBytes) {
             return child;
           }
-
           return _buildLoading(context);
         },
         errorBuilder: (context, error, stackTrace) => _buildError(context),
@@ -102,7 +101,6 @@ class _ResizableImageState extends State<ResizableImage> {
       _cacheImage ??= Image.file(File(src));
       child = _cacheImage!;
     }
-
     return Stack(
       children: [
         child,
@@ -163,7 +161,7 @@ class _ResizableImageState extends State<ResizableImage> {
       padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-        border: Border.all(),
+        border: Border.all(width: 1, color: Colors.black),
       ),
       child: Text(AppFlowyEditorL10n.current.imageLoadFailed),
     );
@@ -190,7 +188,7 @@ class _ResizableImageState extends State<ResizableImage> {
         },
         onHorizontalDragUpdate: (details) {
           if (onUpdate != null) {
-            var offset = details.globalPosition.dx - initialOffset;
+            var offset = (details.globalPosition.dx - initialOffset);
             if (widget.alignment == Alignment.center) {
               offset *= 2.0;
             }
@@ -216,7 +214,7 @@ class _ResizableImageState extends State<ResizableImage> {
                       borderRadius: const BorderRadius.all(
                         Radius.circular(5.0),
                       ),
-                      border: Border.all(color: Colors.white),
+                      border: Border.all(width: 1, color: Colors.white),
                     ),
                   ),
                 )

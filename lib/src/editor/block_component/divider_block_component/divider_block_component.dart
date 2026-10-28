@@ -36,7 +36,6 @@ class DividerBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
-
     return DividerBlockComponentWidget(
       key: node.key,
       node: node,
@@ -92,7 +91,6 @@ class _DividerBlockComponentWidgetState
   Node get node => widget.node;
 
   final dividerKey = GlobalKey();
-
   RenderBox? get _renderBox => context.findRenderObject() as RenderBox?;
 
   @override
@@ -143,16 +141,11 @@ class _DividerBlockComponentWidgetState
       child = widget.wrapper!(context, node, child);
     }
 
-    child = Padding(
-      padding: margin,
-      child: child,
-    );
-
     return child;
   }
 
   @override
-  Position start() => Position(path: widget.node.path);
+  Position start() => Position(path: widget.node.path, offset: 0);
 
   @override
   Position end() => Position(path: widget.node.path, offset: 1);
@@ -181,7 +174,6 @@ class _DividerBlockComponentWidgetState
     if (_renderBox == null) {
       return null;
     }
-
     return getRectsInSelection(
       Selection.collapsed(position),
       shiftWithBaseOffset: shiftWithBaseOffset,
@@ -206,7 +198,6 @@ class _DividerBlockComponentWidgetState
             dividerBox.size,
       ];
     }
-
     return [Offset.zero & _renderBox!.size];
   }
 

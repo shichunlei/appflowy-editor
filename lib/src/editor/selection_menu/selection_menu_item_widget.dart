@@ -33,7 +33,6 @@ class _SelectionMenuItemWidgetState extends State<SelectionMenuItemWidget> {
   Widget build(BuildContext context) {
     final style = widget.selectionMenuStyle;
     final isSelected = widget.isSelected || _onHover;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(8.0, 5.0, 8.0, 5.0),
       child: SizedBox(
@@ -67,8 +66,8 @@ class _SelectionMenuItemWidgetState extends State<SelectionMenuItemWidget> {
                   fontSize: 12.0,
                 ),
               ),
-          onPressed: () async {
-            await widget.item.handler(
+          onPressed: () {
+            widget.item.handler(
               widget.editorState,
               widget.menuService,
               context,

@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:nanoid/non_secure.dart';
+import 'package:nanoid2/nanoid2.dart';
 
 abstract class NodeExternalValues {
   const NodeExternalValues();
@@ -27,20 +27,17 @@ abstract class NodeExternalValues {
 /// ```
 ///
 final class Node extends ChangeNotifier with LinkedListEntry<Node> {
-  Node({
-    required this.type,
-    String? id,
-    this.parent,
-    Attributes attributes = const {},
-    Iterable<Node> children = const [],
-  })  : _children = LinkedList<Node>()
-          ..addAll(
-            children.map(
-              (e) => e..unlink(),
-            ),
-          ), // unlink the given children to avoid the error of "node has already a parent"
-        _attributes = attributes,
-        id = id ?? nanoid(6) {
+  /// Creates a document node and takes ownership of [children].
+  ///
+  /// [type] identifies the block component. [id] is a persistent six-character
+  /// identifier when omitted. [parent] links this node to its owning tree.
+  /// [_attributes] hold block data. [children] are unlinked from their previous
+  /// list and attached to this node, so callers must not keep them in another
+  /// document tree. Generated IDs are URL-safe; callers supplying [id] own its
+  /// uniqueness within the document.
+  Node({required this.type, String? id, this.parent, this._attributes = const {}, Iterable<Node> children = const []})
+    : _children = LinkedList<Node>()..addAll(children.map((e) => e..unlink())),
+      id = id ?? nanoid(length: 6) {
     for (final child in children) {
       child.parent = this;
     }
@@ -52,9 +49,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
     final node = Node(
       type: json['type'] as String,
       attributes: Attributes.from(json['data'] as Map? ?? {}),
-      children: (json['children'] as List? ?? [])
-          .map((e) => Map<String, Object>.from(e))
-          .map((e) => Node.fromJson(e)),
+      children: (json['children'] as List? ?? []).map((e) => Map<String, Object>.from(e)).map((e) => Node.fromJson(e)),
     );
 
     for (final child in node.children) {
@@ -87,7 +82,6 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
 
   List<Node> get children {
     _cacheChildren ??= _children.toList(growable: false);
-
     return _cacheChildren!;
   }
 
@@ -141,7 +135,6 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
 
     final index = path.first;
     final child = childAtIndexOrNull(index);
-
     return child?.childAtPath(path.sublist(1));
   }
 
@@ -154,8 +147,7 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
     final length = _children.length;
     index ??= length;
 
-    AppFlowyEditorLog.editor
-        .debug('insert Node $entry at path ${path + [index]}}');
+    AppFlowyEditorLog.editor.debug('insert Node $entry at path ${path + [index]}}');
 
     entry._resetRelationshipIfNeeded();
     entry.parent = this;
@@ -165,7 +157,6 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
     if (_children.isEmpty) {
       _children.add(entry);
       notifyListeners();
-
       return;
     }
 
@@ -218,7 +209,6 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
 
     parent?.notifyListeners();
     parent = null;
-
     return true;
   }
 
@@ -241,60 +231,42 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
     if (attributes['delta'] is List) {
       return Delta.fromJson(attributes['delta']);
     }
-
     return null;
   }
 
   Map<String, Object> toJson() {
-    final map = <String, Object>{
-      'type': type,
-    };
+    final map = <String, Object>{'type': type};
     if (children.isNotEmpty) {
-      map['children'] = children
-          .map(
-            (node) => node.toJson(),
-          )
-          .toList(growable: false);
+      map['children'] = children.map((node) => node.toJson()).toList(growable: false);
     }
     if (attributes.isNotEmpty) {
       // filter the null value
       map['data'] = attributes..removeWhere((_, value) => value == null);
     }
-
     return map;
   }
 
-  /// Copy the node
+  /// Copies this node with a fresh ID and, by default, deep-copied children.
   ///
-  /// If the parameters are not provided, the original value will be used.
-  ///
-  /// Be careful of the children, they will be deep copied if not provided.
-  Node copyWith({
-    String? type,
-    String? id,
-    bool preserveChildIds = false,
-    Iterable<Node>? children,
-    Attributes? attributes,
-  }) {
+  /// [type] replaces the block type or retains the current value when null.
+  /// [children] supplies replacement children; null deep-copies the current
+  /// children. [attributes] supplies replacement data; null copies the current
+  /// attribute map. The returned node is detached until attached by a caller;
+  /// its external values and extra information follow this node.
+  Node copyWith({String? type, Iterable<Node>? children, Attributes? attributes}) {
     final node = Node(
       type: type ?? this.type,
-      id: id ?? nanoid(6),
+      id: nanoid(length: 6),
       attributes: attributes ?? {...this.attributes},
       children: children ?? [],
     );
     if (children == null && _children.isNotEmpty) {
       for (final child in _children) {
-        node._children.add(
-          child.copyWith(
-            id: preserveChildIds ? child.id : null,
-            preserveChildIds: preserveChildIds,
-          )..parent = node,
-        );
+        node._children.add(child.copyWith()..parent = node);
       }
     }
     node.externalValues = externalValues;
     node.extraInfos = extraInfos;
-
     return node;
   }
 
@@ -311,7 +283,6 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
       return previous;
     }
     final index = parent.children.indexOf(this);
-
     return parent._computePath([index, ...previous]);
   }
 
@@ -323,15 +294,9 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
       final errorMessage =
           '''Please submit an issue to https://github.com/AppFlowy-IO/appflowy-editor/issues if you see this error!
           node = ${toJson()}''';
-      assert(
-        parent != null,
-        errorMessage,
-      );
+      assert(parent != null, errorMessage);
       // also, its parent should contain this node
-      assert(
-        parent!.children.where((element) => element.id == id).length == 1,
-        errorMessage,
-      );
+      assert(parent!.children.where((element) => element.id == id).length == 1, errorMessage);
     }
 
     for (final child in children) {
@@ -342,24 +307,12 @@ final class Node extends ChangeNotifier with LinkedListEntry<Node> {
 
 @Deprecated('Use Paragraph instead')
 final class TextNode extends Node {
-  TextNode({
-    required Delta delta,
-    Iterable<Node>? children,
-    Attributes? attributes,
-  })  : _delta = delta,
-        super(
-          type: 'text',
-          children: children?.toList() ?? [],
-          attributes: attributes ?? {},
-          id: '',
-        );
+  TextNode({required this._delta, Iterable<Node>? children, Attributes? attributes})
+    : super(type: 'text', children: children?.toList() ?? [], attributes: attributes ?? {}, id: '');
 
   TextNode.empty({Attributes? attributes})
-      : _delta = Delta(operations: [TextInsert('')]),
-        super(
-          type: 'text',
-          attributes: attributes ?? {},
-        );
+    : _delta = Delta(operations: [TextInsert('')]),
+      super(type: 'text', attributes: attributes ?? {});
 
   @override
   @Deprecated('Use type instead')
@@ -379,7 +332,6 @@ final class TextNode extends Node {
   Map<String, Object> toJson() {
     final map = super.toJson();
     map['delta'] = delta.toJson();
-
     return map;
   }
 
@@ -390,27 +342,17 @@ final class TextNode extends Node {
     Attributes? attributes,
     Delta? delta,
     String? id,
-    bool preserveChildIds = false,
   }) {
     final textNode = TextNode(
       children: children ?? [],
       attributes: attributes ?? this.attributes,
       delta: delta ?? this.delta,
     );
-    if (id != null) {
-      textNode.id = id;
-    }
     if (children == null && this.children.isNotEmpty) {
       for (final child in this.children) {
-        textNode._children.add(
-          child.copyWith(
-            id: preserveChildIds ? child.id : null,
-            preserveChildIds: preserveChildIds,
-          )..parent = textNode,
-        );
+        textNode._children.add(child.copyWith()..parent = textNode);
       }
     }
-
     return textNode;
   }
 
@@ -427,14 +369,10 @@ extension NodeEquality on Iterable<Node> {
         return false;
       }
     }
-
     return true;
   }
 
   bool _nodeEquals<T, U>(T base, U other) =>
       identical(this, other) ||
-      base is Node &&
-          other is Node &&
-          other.type == base.type &&
-          other.children.equals(base.children);
+      base is Node && other is Node && other.type == base.type && other.children.equals(base.children);
 }

@@ -5,6 +5,8 @@ List<ToolbarItem> headingItems = [1, 2, 3]
     .toList(growable: false);
 
 class _HeadingToolbarItem extends ToolbarItem {
+  final int level;
+
   _HeadingToolbarItem(this.level)
       : super(
           id: 'editor.h$level',
@@ -57,7 +59,6 @@ class _HeadingToolbarItem extends ToolbarItem {
             return child;
           },
         );
-  final int level;
 
   static String levelToTooltips(int level) {
     if (level == 1) {
@@ -67,7 +68,6 @@ class _HeadingToolbarItem extends ToolbarItem {
     } else if (level == 3) {
       return AppFlowyEditorL10n.current.heading3;
     }
-
     return '';
   }
 }

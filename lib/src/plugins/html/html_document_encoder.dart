@@ -11,7 +11,7 @@ class DocumentHTMLEncoder extends Converter<Document, String> {
   String convert(Document input) {
     final buffer = StringBuffer();
     for (final node in input.root.children) {
-      final HTMLNodeParser? parser = encodeParsers.firstWhereOrNull(
+      HTMLNodeParser? parser = encodeParsers.firstWhereOrNull(
         (element) => element.id == node.type,
       );
       if (parser != null) {
@@ -23,7 +23,6 @@ class DocumentHTMLEncoder extends Converter<Document, String> {
         );
       }
     }
-
     return buffer.toString();
   }
 }

@@ -13,6 +13,21 @@ class ParagraphBlockKeys {
   static const String textDirection = blockComponentTextDirection;
 }
 
+/// Creates a paragraph node with optional structured text and nested nodes.
+///
+/// [text] supplies initial content when [delta] is absent. [attributes] are
+/// merged after the generated delta. A non-null [textDirection] overrides the
+/// direction in [attributes]; null preserves it. [children] defaults to an empty list.
+///
+/// ```dart
+/// import 'package:appflowy_editor/appflowy_editor.dart';
+///
+/// final node = paragraphNode(text: 'Hello');
+/// ```
+///
+/// [text] is the initial paragraph text. [delta] is its structured content.
+/// [textDirection] is an optional direction override. [attributes] contains
+/// additional node attributes. [children] contains nested nodes.
 Node paragraphNode({
   String? text,
   Delta? delta,
@@ -23,11 +38,10 @@ Node paragraphNode({
   return Node(
     type: ParagraphBlockKeys.type,
     attributes: {
-      ParagraphBlockKeys.delta:
-          (delta ?? (Delta()..insert(text ?? ''))).toJson(),
-      if (attributes != null) ...attributes,
-      if (textDirection != null)
-        ParagraphBlockKeys.textDirection: textDirection,
+      ParagraphBlockKeys.delta: (delta ?? (Delta()..insert(text ?? '')))
+          .toJson(),
+      ...?attributes,
+      ParagraphBlockKeys.textDirection: ?textDirection,
     },
     children: children,
   );
@@ -46,7 +60,6 @@ class ParagraphBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
-
     return ParagraphBlockComponentWidget(
       node: node,
       key: node.key,
@@ -158,6 +171,7 @@ class _ParagraphBlockComponentWidgetState
       alignment: alignment,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         textDirection: textDirection,
         children: [
@@ -186,8 +200,14 @@ class _ParagraphBlockComponentWidgetState
       ),
     );
 
-    child = BlockSelectionContainer(
+    child = Container(
       key: blockComponentKey,
+      decoration: withBackgroundColor ? decoration : null,
+      padding: padding,
+      child: child,
+    );
+
+    child = BlockSelectionContainer(
       node: node,
       delegate: this,
       listenable: editorState.selectionNotifier,
@@ -196,19 +216,8 @@ class _ParagraphBlockComponentWidgetState
       supportTypes: const [
         BlockSelectionType.block,
       ],
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: child,
     );
-
-    final decoration = this.decoration;
-    if (withBackgroundColor && decoration != null) {
-      child = DecoratedBox(
-        decoration: decoration,
-        child: child,
-      );
-    }
 
     if (widget.showActions && widget.actionBuilder != null) {
       child = BlockComponentActionWrapper(

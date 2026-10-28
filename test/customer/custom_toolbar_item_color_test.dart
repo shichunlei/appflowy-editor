@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,10 +25,8 @@ void main() async {
     await tester.pumpAndSettle();
 
     // update selection and show the toolbar
-    unawaited(
-      editorState.updateSelectionWithReason(
-        Selection.single(path: [0], startOffset: 0, endOffset: text.length),
-      ),
+    editorState.updateSelectionWithReason(
+      Selection.single(path: [0], startOffset: 0, endOffset: text.length),
     );
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
     expect(find.byType(FloatingToolbar), findsOneWidget);
@@ -55,6 +52,7 @@ class CustomToolbarItemColor extends StatelessWidget {
       localizationsDelegates: const [
         AppFlowyEditorLocalizations.delegate,
       ],
+      supportedLocales: const [Locale('en', 'US')],
       home: Scaffold(
         body: SafeArea(
           child: Container(

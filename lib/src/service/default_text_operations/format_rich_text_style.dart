@@ -1,47 +1,44 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 
-Future<bool> insertHeadingAfterSelection(
-  EditorState editorState,
-  int level,
-) async {
-  return insertNodeAfterSelection(
+void insertHeadingAfterSelection(EditorState editorState, int level) {
+  insertNodeAfterSelection(
     editorState,
     headingNode(level: level),
   );
 }
 
-Future<bool> insertQuoteAfterSelection(EditorState editorState) async {
-  return insertNodeAfterSelection(
+void insertQuoteAfterSelection(EditorState editorState) {
+  insertNodeAfterSelection(
     editorState,
     quoteNode(),
   );
 }
 
-Future<bool> insertCheckboxAfterSelection(EditorState editorState) async {
-  return insertNodeAfterSelection(
+void insertCheckboxAfterSelection(EditorState editorState) {
+  insertNodeAfterSelection(
     editorState,
     todoListNode(checked: false),
   );
 }
 
-Future<bool> insertBulletedListAfterSelection(EditorState editorState) async {
-  return insertNodeAfterSelection(
+void insertBulletedListAfterSelection(EditorState editorState) {
+  insertNodeAfterSelection(
     editorState,
     bulletedListNode(),
   );
 }
 
-Future<bool> insertNumberedListAfterSelection(EditorState editorState) async {
-  return insertNodeAfterSelection(
+void insertNumberedListAfterSelection(EditorState editorState) {
+  insertNodeAfterSelection(
     editorState,
     numberedListNode(),
   );
 }
 
-Future<bool> insertNodeAfterSelection(
+bool insertNodeAfterSelection(
   EditorState editorState,
   Node node,
-) async {
+) {
   final selection = editorState.selection;
   if (selection == null || !selection.isCollapsed) {
     return false;
@@ -71,7 +68,6 @@ Future<bool> insertNodeAfterSelection(
       ..afterSelection = Selection.collapsed(Position(path: next));
   }
 
-  await editorState.apply(transaction);
-
+  editorState.apply(transaction);
   return true;
 }

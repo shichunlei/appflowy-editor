@@ -2,12 +2,11 @@ import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
 extension NodeExtensions on Node {
-  RenderBox? get renderBox =>
-      key.currentContext?.findRenderObject()?.unwrapOrNull<RenderBox>();
+  RenderBox? get renderBox => key.currentContext?.findRenderObject()?.unwrapOrNull<RenderBox>();
 
   BuildContext? get context => key.currentContext;
-  SelectableMixin? get selectable =>
-      key.currentState?.unwrapOrNull<SelectableMixin>();
+
+  SelectableMixin? get selectable => key.currentState?.unwrapOrNull<SelectableMixin>();
 
   /// Level of the node in the document tree.
   ///
@@ -19,7 +18,6 @@ extension NodeExtensions on Node {
       level++;
       parent = parent.parent;
     }
-
     return level;
   }
 
@@ -31,14 +29,22 @@ extension NodeExtensions on Node {
     }
   }
 
+  /// 返回已挂载节点的全局范围；无独立渲染框的结构节点使用可见后代的联合范围。
+  ///
+  /// 不含已卸载或隐藏后代的零范围；没有已布局后代时返回 [Rect.zero]。
+  /// 这使网格等跳过中间结构组件的布局仍可递归定位正文选区。
   Rect get rect {
     if (renderBox != null) {
       final boxOffset = renderBox!.localToGlobal(Offset.zero);
-
       return boxOffset & renderBox!.size;
     }
-
-    return Rect.zero;
+    Rect? bounds;
+    for (final child in children) {
+      final childRect = child.rect;
+      if (childRect.isEmpty) continue;
+      bounds = bounds?.expandToInclude(childRect) ?? childRect;
+    }
+    return bounds ?? Rect.zero;
   }
 
   Node? nextNodeWhere(bool Function(Node element) test) {
@@ -93,10 +99,8 @@ extension NodeExtensions on Node {
       if (test(parent)) {
         return parent;
       }
-
       return parent.previousNodeWhere(test);
     }
-
     return null;
   }
 
@@ -114,7 +118,6 @@ extension NodeExtensions on Node {
         return child;
       }
     }
-
     return null;
   }
 
@@ -137,17 +140,12 @@ extension NodeExtensions on Node {
       if (test(next)) {
         return next;
       }
-
       return next.findDownward(test);
     }
-
     return null;
   }
 
-  bool allSatisfyInSelection(
-    Selection selection,
-    bool Function(Delta delta) test,
-  ) {
+  bool allSatisfyInSelection(Selection selection, bool Function(Delta delta) test) {
     if (selection.isCollapsed) {
       return false;
     }
@@ -172,7 +170,6 @@ extension NodeExtensions on Node {
       }
       parent = parent.parent;
     }
-
     return false;
   }
 
@@ -181,7 +178,6 @@ extension NodeExtensions on Node {
       return this;
     }
     final parent = this.parent;
-
     return parent?.findParent(test);
   }
 }
@@ -199,10 +195,7 @@ extension NodesExtensions<T extends Node> on List<T> {
     return this;
   }
 
-  bool allSatisfyInSelection(
-    Selection selection,
-    bool Function(Delta delta) test,
-  ) {
+  bool allSatisfyInSelection(Selection selection, bool Function(Delta delta) test) {
     if (selection.isCollapsed) {
       return false;
     }

@@ -25,6 +25,15 @@ class TableBlockKeys {
 }
 
 class TableStyle {
+  final double colWidth;
+  final double rowHeight;
+  final double colMinimumWidth;
+  final double borderWidth;
+  final Widget addIcon;
+  final Widget handlerIcon;
+  final Color borderColor;
+  final Color borderHoverColor;
+
   const TableStyle({
     this.colWidth = 160,
     this.rowHeight = 40,
@@ -35,14 +44,6 @@ class TableStyle {
     this.borderColor = TableDefaults.borderColor,
     this.borderHoverColor = TableDefaults.borderHoverColor,
   });
-  final double colWidth;
-  final double rowHeight;
-  final double colMinimumWidth;
-  final double borderWidth;
-  final Widget addIcon;
-  final Widget handlerIcon;
-  final Color borderColor;
-  final Color borderHoverColor;
 }
 
 class TableDefaults {
@@ -93,7 +94,6 @@ class TableBlockComponentBuilder extends BlockComponentBuilder {
     TableDefaults.rowHeight = tableStyle.rowHeight;
     TableDefaults.colMinimumWidth = tableStyle.colMinimumWidth;
     TableDefaults.borderWidth = tableStyle.borderWidth;
-
     return TableBlockComponentWidget(
       key: node.key,
       tableNode: TableNode(node: node),
@@ -119,7 +119,6 @@ class TableBlockComponentBuilder extends BlockComponentBuilder {
         if (node.attributes.isEmpty) {
           AppFlowyEditorLog.editor
               .debug('TableBlockComponentBuilder: node is empty');
-
           return false;
         }
 
@@ -129,7 +128,6 @@ class TableBlockComponentBuilder extends BlockComponentBuilder {
           AppFlowyEditorLog.editor.debug(
             'TableBlockComponentBuilder: node has no colsLen or rowsLen',
           );
-
           return false;
         }
 
@@ -141,7 +139,6 @@ class TableBlockComponentBuilder extends BlockComponentBuilder {
         if (children.isEmpty) {
           AppFlowyEditorLog.editor
               .debug('TableBlockComponentBuilder: children is empty');
-
           return false;
         }
 
@@ -149,7 +146,6 @@ class TableBlockComponentBuilder extends BlockComponentBuilder {
           AppFlowyEditorLog.editor.debug(
             'TableBlockComponentBuilder: children length(${children.length}) is not equal to colsLen * rowsLen($colsLen * $rowsLen)',
           );
-
           return false;
         }
 
@@ -165,7 +161,6 @@ class TableBlockComponentBuilder extends BlockComponentBuilder {
               AppFlowyEditorLog.editor.debug(
                 'TableBlockComponentBuilder: child($i, $j) is empty',
               );
-
               return false;
             }
 
@@ -174,7 +169,6 @@ class TableBlockComponentBuilder extends BlockComponentBuilder {
               AppFlowyEditorLog.editor.debug(
                 'TableBlockComponentBuilder: child($i, $j) is not unique',
               );
-
               return false;
             }
           }
@@ -217,12 +211,6 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
 
   late final editorState = Provider.of<EditorState>(context, listen: false);
   final _scrollController = ScrollController();
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -268,11 +256,6 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
       );
     }
 
-    child = Padding(
-      padding: margin,
-      child: child,
-    );
-
     return child;
   }
 
@@ -281,7 +264,7 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
   RenderBox get _renderBox => context.findRenderObject() as RenderBox;
 
   @override
-  Position start() => Position(path: widget.node.path);
+  Position start() => Position(path: widget.node.path, offset: 0);
 
   @override
   Position end() => Position(path: widget.node.path, offset: 1);
@@ -304,7 +287,6 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
             tableBox.size,
       ];
     }
-
     return [Offset.zero & _renderBox.size];
   }
 
@@ -341,11 +323,11 @@ class _TableBlockComponentWidgetState extends State<TableBlockComponentWidget>
     bool shiftWithBaseOffset = false,
   }) {
     final size = _renderBox.size;
-
     return Rect.fromLTWH(-size.width / 2.0, 0, size.width, size.height);
   }
 }
 
+/// The menu item that inserts a two-by-two table at a collapsed selection.
 SelectionMenuItem tableMenuItem = SelectionMenuItem(
   getName: () => AppFlowyEditorL10n.current.table,
   icon: (editorState, isSelected, style) => SelectionMenuIconWidget(
@@ -354,7 +336,7 @@ SelectionMenuItem tableMenuItem = SelectionMenuItem(
     style: style,
   ),
   keywords: ['table'],
-  handler: (editorState, _, __) async {
+  handler: (editorState, _, _) {
     final selection = editorState.selection;
     if (selection == null || !selection.isCollapsed) {
       return;
@@ -379,6 +361,7 @@ SelectionMenuItem tableMenuItem = SelectionMenuItem(
       transaction.afterSelection = Selection.collapsed(
         Position(
           path: selection.end.path + [0, 0],
+          offset: 0,
         ),
       );
     } else {
@@ -386,10 +369,11 @@ SelectionMenuItem tableMenuItem = SelectionMenuItem(
       transaction.afterSelection = Selection.collapsed(
         Position(
           path: selection.end.path.next + [0, 0],
+          offset: 0,
         ),
       );
     }
 
-    await editorState.apply(transaction);
+    editorState.apply(transaction);
   },
 );

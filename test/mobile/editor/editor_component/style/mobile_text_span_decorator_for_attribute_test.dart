@@ -138,12 +138,12 @@ void main() {
           );
           await tester.pumpAndSettle(const Duration(seconds: 1));
 
-          final selection = Selection.single(
+          var selection = Selection.single(
             path: [0],
             startOffset: 0,
             endOffset: text2.length,
           );
-          final node = editor.editorState.getNodesInSelection(selection);
+          var node = editor.editorState.getNodesInSelection(selection);
           // link is changed
           expect(
             node.allSatisfyInSelection(selection, (delta) {
@@ -188,12 +188,12 @@ void main() {
           //dialog is closed
           expect(find.byType(AlertDialog), findsNothing);
 
-          final selection = Selection.single(
+          var selection = Selection.single(
             path: [0],
             startOffset: 0,
             endOffset: text.length,
           );
-          final node = editor.editorState.getNodesInSelection(selection);
+          var node = editor.editorState.getNodesInSelection(selection);
           // link is removed
           expect(
             node.allSatisfyInSelection(selection, (delta) {

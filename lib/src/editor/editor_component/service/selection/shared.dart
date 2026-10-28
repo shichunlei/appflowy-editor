@@ -25,7 +25,6 @@ extension EditorStateSelection on EditorState {
       }
       sortedNodes.add(child);
     }
-
     return sortedNodes;
   }
 
@@ -53,7 +52,6 @@ extension EditorStateSelection on EditorState {
         AppFlowyEditorLog.selection.debug(
           'findNodeInOffset: $index, rect: $rect, offset: $offset, isMatch: $isMatch',
         );
-
         return isMatch;
       },
       compare: (index, rect) => rect.bottom <= offset.dy,
@@ -78,7 +76,6 @@ extension EditorStateSelection on EditorState {
           AppFlowyEditorLog.selection.debug(
             'findNodeInOffset: $index, rect: $rect, offset: $offset, isMatch: $isMatch',
           );
-
           return isMatch;
         },
         compare: (index, rect) => rect.right <= offset.dx,
@@ -86,73 +83,65 @@ extension EditorStateSelection on EditorState {
     }
 
     final node = filteredNodes[min];
+    if (node.children.isNotEmpty &&
+        _getCachedRect(node.children.first, rectCache).top <= offset.dy) {
+      final skipSortingChildren =
+          node.selectable?.skipSortingChildrenWhenSelecting ?? false;
 
-    if (node.children.isNotEmpty) {
-      // First, filter out invisible children (Offstage or Opacity 0)
-      // This must happen BEFORE checking rect conditions
+      List<Node> children;
+
+      if (skipSortingChildren) {
+        children = node.children;
+      } else {
+        children = node.children.toList(growable: false)
+          ..sort(
+            (a, b) {
+              final aRect = _getCachedRect(a, rectCache!);
+              final bRect = _getCachedRect(b, rectCache);
+              return aRect.bottom != bRect.bottom
+                  ? aRect.bottom.compareTo(bRect.bottom)
+                  : aRect.left.compareTo(bRect.left);
+            },
+          );
+      }
+
+      // if the nodes are in the same tab view, their rect are overlaid,
+      //  we need to filter out the invisible nodes
+      bool hasInvisibleChildren = false;
       final visibleChildren = <Node>[];
-      for (final child in node.children) {
+      for (final child in children) {
         final context = child.key.currentContext;
         var isVisible = true;
         context?.visitAncestorElements((element) {
           final widget = element.widget;
           if (widget is Opacity && widget.opacity == 0) {
             isVisible = false;
-
             return false;
           }
-
-          if (widget is Offstage && widget.offstage) {
-            isVisible = false;
-
-            return false;
-          }
-
           return true;
         });
         if (isVisible) {
           visibleChildren.add(child);
-        }
-      }
-
-      // Now check if any visible child's rect contains the offset
-      if (visibleChildren.isNotEmpty &&
-          _getCachedRect(visibleChildren.first, rectCache).top <= offset.dy) {
-        final skipSortingChildren =
-            node.selectable?.skipSortingChildrenWhenSelecting ?? false;
-
-        List<Node> children;
-
-        if (skipSortingChildren) {
-          children = visibleChildren;
         } else {
-          children = visibleChildren.toList(growable: false)
-            ..sort(
-              (a, b) {
-                final aRect = _getCachedRect(a, rectCache!);
-                final bRect = _getCachedRect(b, rectCache);
-
-                return aRect.bottom != bRect.bottom
-                    ? aRect.bottom.compareTo(bRect.bottom)
-                    : aRect.left.compareTo(bRect.left);
-              },
-            );
+          hasInvisibleChildren = true;
         }
-
-        if (children.isEmpty) {
-          return node;
-        }
-
-        return getNodeInOffset(
-          children,
-          offset,
-          0,
-          children.length - 1,
-          rectCache,
-        );
       }
-    }
+      if (hasInvisibleChildren) {
+        children = visibleChildren;
+      }
 
+      if (children.isEmpty) {
+        return node;
+      }
+
+      return getNodeInOffset(
+        children,
+        offset,
+        0,
+        children.length - 1,
+        rectCache,
+      );
+    }
     return node;
   }
 

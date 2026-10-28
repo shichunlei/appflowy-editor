@@ -28,12 +28,6 @@ typedef AppFlowyTextSpanOverlayBuilder = List<Widget> Function(
   SelectableMixin delegate,
 );
 
-typedef AppFlowyTextSpanBackgroundBuilder = List<Widget> Function(
-  BuildContext context,
-  Node node,
-  SelectableMixin delegate,
-);
-
 class AppFlowyRichText extends StatefulWidget {
   const AppFlowyRichText({
     super.key,
@@ -46,7 +40,6 @@ class AppFlowyRichText extends StatefulWidget {
     this.textDirection = TextDirection.ltr,
     this.textSpanDecoratorForCustomAttributes,
     this.textSpanOverlayBuilder,
-    this.textSpanBackgroundBuilder,
     this.textAlign,
     this.cursorColor = const Color.fromARGB(255, 0, 0, 0),
     this.selectionColor = const Color.fromARGB(53, 111, 201, 231),
@@ -101,11 +94,6 @@ class AppFlowyRichText extends StatefulWidget {
   /// You can use this to customize the text span overlay, for example, a hover menu in linked text.
   final AppFlowyTextSpanOverlayBuilder? textSpanOverlayBuilder;
 
-  /// customize the text span background builder
-  ///
-  /// You can use this to customize the text span background, for example, a highlight behind the text.
-  final AppFlowyTextSpanBackgroundBuilder? textSpanBackgroundBuilder;
-
   final TextDirection textDirection;
 
   final Color cursorColor;
@@ -144,10 +132,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
       widget.textSpanOverlayBuilder ??
       widget.editorState.editorStyle.textSpanOverlayBuilder;
 
-  AppFlowyTextSpanBackgroundBuilder? get textSpanBackgroundBuilder =>
-      widget.textSpanBackgroundBuilder ??
-      widget.editorState.editorStyle.textSpanBackgroundBuilder;
-
   @override
   void initState() {
     super.initState();
@@ -159,7 +143,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
     Widget child = Stack(
       children: [
         _buildPlaceholderText(context),
-        ..._buildRichTextBackground(context),
         _buildRichText(context),
         ..._buildRichTextOverlay(context),
       ],
@@ -190,7 +173,7 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
   }
 
   @override
-  Position start() => Position(path: widget.node.path);
+  Position start() => Position(path: widget.node.path, offset: 0);
 
   @override
   Position end() => Position(
@@ -221,7 +204,7 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
     }
 
     final textPosition = TextPosition(offset: position.offset);
-    final double? placeholderCursorHeight =
+    double? placeholderCursorHeight =
         _placeholderRenderParagraph?.getFullHeightForCaret(textPosition);
     Offset? placeholderCursorOffset =
         _placeholderRenderParagraph?.getOffsetForCaret(
@@ -265,7 +248,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
       widget.cursorWidth,
       cursorHeight ?? 16.0,
     );
-
     return rect;
   }
 
@@ -274,7 +256,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
     final offset = _renderParagraph?.globalToLocal(start) ?? Offset.zero;
     final baseOffset =
         _renderParagraph?.getPositionForOffset(offset).offset ?? -1;
-
     return Position(path: widget.node.path, offset: baseOffset);
   }
 
@@ -303,7 +284,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
         _renderParagraph?.getWordBoundary(textPosition) ?? TextRange.empty;
     final start = Position(path: widget.node.path, offset: textRange.start);
     final end = Position(path: widget.node.path, offset: textRange.end);
-
     return Selection(start: start, end: end);
   }
 
@@ -314,7 +294,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
         _renderParagraph?.getWordBoundary(textPosition) ?? TextRange.empty;
     final start = Position(path: widget.node.path, offset: textRange.start);
     final end = Position(path: widget.node.path, offset: textRange.end);
-
     return Selection(start: start, end: end);
   }
 
@@ -358,12 +337,10 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
         height = paragraph?.getFullHeightForCaret(textPosition) ?? height;
         width = 2;
       }
-
       return [
         Rect.fromLTWH(position.dx, position.dy, width, height),
       ];
     }
-
     return rects;
   }
 
@@ -383,7 +360,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
         _renderParagraph?.getPositionForOffset(localStart).offset ?? -1;
     final extentOffset =
         _renderParagraph?.getPositionForOffset(localEnd).offset ?? -1;
-
     return Selection.single(
       path: widget.node.path,
       startOffset: baseOffset,
@@ -414,7 +390,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
     if (delta != null && delta.isNotEmpty) {
       textSpan = textSpan.copyWith(text: '');
     }
-
     return RichText(
       key: placeholderTextKey,
       textHeightBehavior: TextHeightBehavior(
@@ -429,20 +404,8 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
       textScaler: TextScaler.linear(
         widget.editorState.editorStyle.textScaleFactor,
       ),
+      overflow: TextOverflow.ellipsis,
     );
-  }
-
-  List<Widget> _buildRichTextBackground(BuildContext context) {
-    if (textKey.currentContext == null) {
-      return [];
-    }
-
-    return textSpanBackgroundBuilder?.call(
-          context,
-          widget.node,
-          this,
-        ) ??
-        [];
   }
 
   Widget _buildRichText(BuildContext context) {
@@ -452,7 +415,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
       textSpan = widget.textSpanDecorator!(textSpan);
     }
     textSpan = adjustTextSpan(textSpan);
-
     return RichText(
       key: textKey,
       textAlign: widget.textAlign ?? TextAlign.start,
@@ -472,7 +434,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
 
   List<Widget> _buildRichTextOverlay(BuildContext context) {
     if (textKey.currentContext == null) return [];
-
     return textSpanOverlayBuilder?.call(
           context,
           widget.node,
@@ -491,6 +452,9 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
     });
   }
 
+  /// Builds completion text that refreshes when the editor selection changes.
+  ///
+  /// Returns an empty widget when the provider has no completion to display.
   Widget _buildAutoCompleteRichText() {
     final textInserts = widget.node.delta!.whereType<TextInsert>();
     TextSpan textSpan = getTextSpan(textInserts: textInserts);
@@ -498,10 +462,9 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
       textSpan = widget.textSpanDecorator!(textSpan);
     }
     textSpan = adjustTextSpan(textSpan);
-
     return ValueListenableBuilder(
       valueListenable: widget.editorState.selectionNotifier,
-      builder: (_, __, ___) {
+      builder: (_, _, _) {
         final autoCompleteText = autoCompleteTextProvider?.call(
           context,
           widget.node,
@@ -528,7 +491,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
             ),
           ],
         );
-
         return RichText(
           textAlign: widget.textAlign ?? TextAlign.start,
           textHeightBehavior: TextHeightBehavior(
@@ -565,7 +527,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
             fontSize = max(fontSize, style.fontSize!);
           }
         }
-
         return true;
       });
       if (height == 0.0 || fontSize == 0.0) {
@@ -578,7 +539,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
         ),
       );
     }
-
     return textSpan;
   }
 
@@ -595,7 +555,7 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
     required Iterable<TextInsert> textInserts,
   }) {
     int offset = 0;
-    final List<InlineSpan> textSpans = [];
+    List<InlineSpan> textSpans = [];
     for (final textInsert in textInserts) {
       TextStyle textStyle = textStyleConfiguration.text.copyWith(
         height: textStyleConfiguration.lineHeight,
@@ -672,7 +632,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
       );
       offset += textInsert.length;
     }
-
     return TextSpan(
       children: textSpans,
     );
@@ -727,7 +686,6 @@ class _AppFlowyRichTextState extends State<AppFlowyRichText>
         );
       }
     }
-
     return textSelection;
   }
 }
@@ -742,27 +700,24 @@ extension AppFlowyRichTextAttributes on Attributes {
   bool get code => this[AppFlowyRichTextKeys.code] == true;
 
   bool get strikethrough {
-    return containsKey(AppFlowyRichTextKeys.strikethrough) &&
-        this[AppFlowyRichTextKeys.strikethrough] == true;
+    return (containsKey(AppFlowyRichTextKeys.strikethrough) &&
+        this[AppFlowyRichTextKeys.strikethrough] == true);
   }
 
   Color? get color {
     final textColor = this[AppFlowyRichTextKeys.textColor] as String?;
-
     return textColor?.tryToColor();
   }
 
   Color? get backgroundColor {
     final highlightColor =
         this[AppFlowyRichTextKeys.backgroundColor] as String?;
-
     return highlightColor?.tryToColor();
   }
 
   Color? get findBackgroundColor {
     final findBackgroundColor =
         this[AppFlowyRichTextKeys.findBackgroundColor] as String?;
-
     return findBackgroundColor?.tryToColor();
   }
 
@@ -770,7 +725,6 @@ extension AppFlowyRichTextAttributes on Attributes {
     if (this[AppFlowyRichTextKeys.href] is String) {
       return this[AppFlowyRichTextKeys.href];
     }
-
     return null;
   }
 
@@ -778,7 +732,6 @@ extension AppFlowyRichTextAttributes on Attributes {
     if (this[AppFlowyRichTextKeys.fontFamily] is String) {
       return this[AppFlowyRichTextKeys.fontFamily];
     }
-
     return null;
   }
 
@@ -786,7 +739,6 @@ extension AppFlowyRichTextAttributes on Attributes {
     if (this[AppFlowyRichTextKeys.fontSize] is double) {
       return this[AppFlowyRichTextKeys.fontSize];
     }
-
     return null;
   }
 

@@ -13,7 +13,7 @@ void main() {
       withFloatingToolbar: true,
     );
 
-    final selection = Selection.single(
+    var selection = Selection.single(
       path: [1],
       startOffset: 2,
       endOffset: text.length - 2,

@@ -16,7 +16,7 @@ class DocumentMarkdownEncoder extends Converter<Document, String> {
   String convert(Document input) {
     final buffer = StringBuffer();
     for (final node in input.root.children) {
-      final NodeParser? parser = parsers.firstWhereOrNull(
+      NodeParser? parser = parsers.firstWhereOrNull(
         (element) => element.id == node.type,
       );
       if (parser != null) {
@@ -26,7 +26,6 @@ class DocumentMarkdownEncoder extends Converter<Document, String> {
         }
       }
     }
-
     return buffer.toString();
   }
 
@@ -34,16 +33,13 @@ class DocumentMarkdownEncoder extends Converter<Document, String> {
     List<Node> nodes, {
     bool withIndent = false,
   }) {
-    final result = convert(
-      Document(root: pageNode(children: nodes.map((n) => n.deepCopy()))),
-    );
+    final result = convert(Document(root: pageNode(children: nodes)));
     if (result.isNotEmpty && withIndent) {
       return result
           .split('\n')
           .map((e) => e.isNotEmpty ? '\t$e' : e)
           .join('\n');
     }
-
     return result;
   }
 }

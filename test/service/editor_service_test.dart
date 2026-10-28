@@ -8,7 +8,7 @@ void main() {
   group('AppFlowyEditor tests', () {
     testWidgets('without autoFocus false', (tester) async {
       final editor = tester.editor..addParagraph(initialText: 'Hello');
-      await editor.startTesting();
+      await editor.startTesting(autoFocus: false);
       final selection = editor.selection;
       expect(selection != null, false);
       await editor.dispose();
@@ -28,7 +28,7 @@ void main() {
           1000,
           initialText: 'Hello',
         );
-      await editor.startTesting();
+      await editor.startTesting(shrinkWrap: false);
       final size = tester.getSize(find.byType(AppFlowyEditor));
       expect(size, const Size(800, 600));
       await editor.dispose();

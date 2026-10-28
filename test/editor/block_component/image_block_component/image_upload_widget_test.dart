@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
@@ -16,10 +15,8 @@ void main() {
       final editorState = EditorState(document: document);
       expect(editorState.document.root.children.length, 1);
 
-      unawaited(
-        editorState.updateSelectionWithReason(
-          Selection.collapsed(Position(path: [0], offset: initialText.length)),
-        ),
+      editorState.updateSelectionWithReason(
+        Selection.collapsed(Position(path: [0], offset: initialText.length)),
       );
 
       await editorState.insertImageNode('https://appflowy.io/image.jpg');

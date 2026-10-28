@@ -17,6 +17,22 @@ class NumberedListBlockKeys {
   static const String textDirection = blockComponentTextDirection;
 }
 
+/// Creates a numbered list node from optional attributes and child nodes.
+///
+/// When [attributes] is `null`, [delta] and [number] initialize the generated
+/// attributes. Otherwise, the supplied map is used as-is. [textDirection] is
+/// stored when set, and [children] defaults to an empty list.
+///
+/// ```dart
+/// import 'package:appflowy_editor/appflowy_editor.dart';
+///
+/// final node = numberedListNode(number: 1);
+/// ```
+///
+/// [delta] is the structured item text used when attributes are generated.
+/// [attributes] is an optional complete attribute map. [number] is the initial
+/// list number when attributes are generated. [textDirection] is an optional
+/// direction value. [children] contains nested nodes.
 Node numberedListNode({
   Delta? delta,
   Attributes? attributes,
@@ -28,13 +44,11 @@ Node numberedListNode({
     'delta': (delta ?? Delta()).toJson(),
     NumberedListBlockKeys.number: number,
   };
-
   return Node(
     type: NumberedListBlockKeys.type,
     attributes: {
       ...attributes,
-      if (textDirection != null)
-        NumberedListBlockKeys.textDirection: textDirection,
+      NumberedListBlockKeys.textDirection: textDirection,
     },
     children: children ?? [],
   );
@@ -57,7 +71,6 @@ class NumberedListBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
-
     return NumberedListBlockComponentWidget(
       key: node.key,
       node: node,
@@ -138,6 +151,7 @@ class _NumberedListBlockComponentWidgetState
       alignment: alignment,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         textDirection: textDirection,
         children: [
@@ -225,7 +239,6 @@ class _NumberedListIcon extends StatelessWidget {
     final editorState = context.read<EditorState>();
     final text = editorState.editorStyle.textStyleConfiguration.text;
     final textScaleFactor = editorState.editorStyle.textScaleFactor;
-
     return Container(
       constraints:
           const BoxConstraints(minWidth: 26, minHeight: 22) * textScaleFactor,
@@ -259,7 +272,6 @@ extension on Node {
       2 => indexInSameLevel.roman,
       _ => '$indexInSameLevel',
     };
-
     return '$levelString.';
   }
 }
@@ -281,7 +293,6 @@ class _NumberedListIconBuilder {
       }
       parent = parent.parent;
     }
-
     return level;
   }
 
@@ -304,7 +315,6 @@ class _NumberedListIconBuilder {
     if (startNumber != null) {
       return startNumber + level - 1;
     }
-
     return level;
   }
 }
@@ -314,11 +324,10 @@ extension on int {
     String result = '';
     int number = this;
     while (number > 0) {
-      final int remainder = (number - 1) % 26;
+      int remainder = (number - 1) % 26;
       result = String.fromCharCode(remainder + 65) + result;
       number = (number - 1) ~/ 26;
     }
-
     return result.toLowerCase();
   }
 

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
@@ -24,7 +23,7 @@ const Set<String> _defaultSupportSlashMenuNodeTypes = {
 final CharacterShortcutEvent slashCommand = CharacterShortcutEvent(
   key: 'show the slash menu',
   character: '/',
-  handler: (editorState) async => _showSlashMenu(
+  handler: (editorState) async => await _showSlashMenu(
     editorState,
     standardSelectionMenuItems,
   ),
@@ -80,7 +79,6 @@ Future<bool> _showSlashMenu(
   final afterSelection = editorState.selection;
   if (afterSelection == null || !afterSelection.isCollapsed) {
     assert(false, 'the selection should be collapsed');
-
     return true;
   }
 
@@ -112,7 +110,7 @@ Future<bool> _showSlashMenu(
       style: style,
     );
     if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
-      unawaited(_selectionMenuService!.show());
+      _selectionMenuService?.show();
     } else {
       await _selectionMenuService?.show();
     }

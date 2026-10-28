@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' if (dart.library.html) 'package:example/file_io_stub.dart';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
@@ -16,9 +16,8 @@ import 'package:example/pages/editor.dart';
 import 'package:example/pages/editor_list.dart';
 import 'package:example/pages/fixed_toolbar_editor.dart';
 import 'package:example/pages/focus_example_for_editor.dart';
-import 'package:example/pages/inline_comment_editor.dart';
 import 'package:example/pages/markdown_editor.dart';
-import 'package:example/pages/ten_thousand_links_showcase.dart';
+import 'package:example/pages/meeting_description_demo.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -28,12 +27,7 @@ import 'package:printing/printing.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:universal_platform/universal_platform.dart';
 
-enum ExportFileType {
-  documentJson,
-  markdown,
-  pdf,
-  delta,
-}
+enum ExportFileType { documentJson, markdown, pdf, delta }
 
 extension on ExportFileType {
   String get extension {
@@ -72,11 +66,11 @@ class _HomePageState extends State<HomePage> {
         : rootBundle.loadString('assets/mobile_example.json');
 
     _widgetBuilder = (context) => Editor(
-          jsonString: _jsonString,
-          onEditorStateChange: (editorState) {
-            _editorState = editorState;
-          },
-        );
+      jsonString: _jsonString,
+      onEditorStateChange: (editorState) {
+        _editorState = editorState;
+      },
+    );
   }
 
   @override
@@ -84,14 +78,12 @@ class _HomePageState extends State<HomePage> {
     super.reassemble();
 
     _widgetBuilder = (context) => Editor(
-          jsonString: _jsonString,
-          onEditorStateChange: (editorState) {
-            _editorState = editorState;
-            _jsonString = Future.value(
-              jsonEncode(_editorState.document.toJson()),
-            );
-          },
-        );
+      jsonString: _jsonString,
+      onEditorStateChange: (editorState) {
+        _editorState = editorState;
+        _jsonString = Future.value(jsonEncode(_editorState.document.toJson()));
+      },
+    );
   }
 
   @override
@@ -121,10 +113,7 @@ class _HomePageState extends State<HomePage> {
           DrawerHeader(
             padding: EdgeInsets.zero,
             margin: EdgeInsets.zero,
-            child: Image.asset(
-              'assets/images/icon.jpeg',
-              fit: BoxFit.fill,
-            ),
+            child: Image.asset('assets/images/icon.jpeg', fit: BoxFit.fill),
           ),
 
           // AppFlowy Editor Demo
@@ -150,13 +139,12 @@ class _HomePageState extends State<HomePage> {
             _loadEditor(context, jsonString);
           }),
           _buildListTile(context, 'With Example.html', () async {
-            final htmlString =
-                await rootBundle.loadString('assets/example.html');
+            final htmlString = await rootBundle.loadString(
+              'assets/example.html',
+            );
             final html = htmlToDocument(htmlString);
             final jsonString = Future<String>.value(
-              jsonEncode(
-                html.toJson(),
-              ).toString(),
+              jsonEncode(html.toJson()).toString(),
             );
             if (context.mounted) {
               _loadEditor(context, jsonString);
@@ -173,6 +161,14 @@ class _HomePageState extends State<HomePage> {
 
           // Theme Demo
           _buildSeparator(context, 'Showcases'),
+          _buildListTile(context, 'CSES Meeting Description', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MeetingDescriptionDemo(),
+              ),
+            );
+          }),
           _buildListTile(context, 'Drag to reorder', () {
             Navigator.push(
               context,
@@ -184,9 +180,7 @@ class _HomePageState extends State<HomePage> {
           _buildListTile(context, 'Markdown Editor', () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const MarkdownEditor(),
-              ),
+              MaterialPageRoute(builder: (context) => const MarkdownEditor()),
             );
           }),
           _buildListTile(context, 'Animated Markdown Editor', () {
@@ -208,9 +202,7 @@ class _HomePageState extends State<HomePage> {
           _buildListTile(context, 'Collab Editor', () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const CollabEditor(),
-              ),
+              MaterialPageRoute(builder: (context) => const CollabEditor()),
             );
           }),
           _buildListTile(context, 'Collab Selection', () {
@@ -241,11 +233,7 @@ class _HomePageState extends State<HomePage> {
             final jsonString = rootBundle.loadString(
               'assets/arabic_example.json',
             );
-            _loadEditor(
-              context,
-              jsonString,
-              textDirection: TextDirection.rtl,
-            );
+            _loadEditor(context, jsonString, textDirection: TextDirection.rtl);
           }),
           _buildListTile(context, 'Focus Example', () {
             Navigator.push(
@@ -258,9 +246,7 @@ class _HomePageState extends State<HomePage> {
           _buildListTile(context, 'Editor List', () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const EditorList(),
-              ),
+              MaterialPageRoute(builder: (context) => const EditorList()),
             );
           }),
           _buildListTile(context, 'Fixed Toolbar', () {
@@ -276,27 +262,8 @@ class _HomePageState extends State<HomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => AutoExpandEditor(
-                  editorState: EditorState.blank(),
-                ),
-              ),
-            );
-          }),
-
-          _buildListTile(context, 'Inline Comment', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const InlineCommentEditor(),
-              ),
-            );
-          }),
-
-          _buildListTile(context, '10,000 Links (one link per paragraph)', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const TenThousandLinksShowcase(),
+                builder: (context) =>
+                    AutoExpandEditor(editorState: EditorState.blank()),
               ),
             );
           }),
@@ -340,10 +307,7 @@ class _HomePageState extends State<HomePage> {
       contentPadding: const EdgeInsets.only(left: 16),
       title: Text(
         text,
-        style: const TextStyle(
-          color: Colors.blue,
-          fontSize: 14,
-        ),
+        style: const TextStyle(color: Colors.blue, fontSize: 14),
       ),
       onTap: () {
         Navigator.pop(context);
@@ -373,27 +337,27 @@ class _HomePageState extends State<HomePage> {
   }) async {
     final completer = Completer<void>();
     _jsonString = jsonString;
-    setState(
-      () {
-        _widgetBuilder = (context) => Editor(
-              jsonString: _jsonString,
-              onEditorStateChange: (editorState) {
-                _editorState = editorState;
-              },
-              textDirection: textDirection,
-            );
-      },
-    );
+    setState(() {
+      _widgetBuilder = (context) => Editor(
+        jsonString: _jsonString,
+        onEditorStateChange: (editorState) {
+          _editorState = editorState;
+        },
+        textDirection: textDirection,
+      );
+    });
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       completer.complete();
     });
     return completer.future;
   }
 
-  void _exportFile(
-    EditorState editorState,
-    ExportFileType fileType,
-  ) async {
+  /// Exports [editorState] using the selected [fileType].
+  ///
+  /// Web and mobile retain their platform-specific destinations. Desktop
+  /// passes the finished bytes to the save dialog and displays its saved URI.
+  /// Cancellation leaves the document untouched; picker failures propagate.
+  void _exportFile(EditorState editorState, ExportFileType fileType) async {
     var result = '';
 
     switch (fileType) {
@@ -414,8 +378,8 @@ class _HomePageState extends State<HomePage> {
     if (kIsWeb) {
       final blob = html.Blob([result], 'text/plain', 'native');
       html.AnchorElement(
-        href: html.Url.createObjectUrlFromBlob(blob).toString(),
-      )
+          href: html.Url.createObjectUrlFromBlob(blob).toString(),
+        )
         ..setAttribute('download', 'document.${fileType.extension}')
         ..click();
     } else if (UniversalPlatform.isMobile) {
@@ -436,53 +400,47 @@ class _HomePageState extends State<HomePage> {
       }
     } else {
       // for desktop
-      final path = await FilePicker.platform.saveFile(
+      final Uint8List bytes;
+      if (fileType == ExportFileType.pdf) {
+        final pdf = await PdfHTMLEncoder(
+          fontFallback: [
+            await PdfGoogleFonts.notoColorEmoji(),
+            await PdfGoogleFonts.notoColorEmojiRegular(),
+          ],
+        ).convert(result);
+        bytes = Uint8List.fromList(await pdf.save());
+      } else {
+        bytes = Uint8List.fromList(utf8.encode(result));
+      }
+
+      final savedUri = await FilePicker.saveFile(
         fileName: 'document.${fileType.extension}',
+        bytes: bytes,
       );
-      if (path != null) {
-        await File(path).writeAsString(result);
-        if (fileType == ExportFileType.pdf) {
-          final pdf = await PdfHTMLEncoder(
-            fontFallback: [
-              await PdfGoogleFonts.notoColorEmoji(),
-              await PdfGoogleFonts.notoColorEmojiRegular(),
-            ],
-          ).convert(result);
-
-          await File(path).writeAsBytes(await pdf.save());
-        }
-
+      if (savedUri != null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('This document is saved to the $path'),
-            ),
+            SnackBar(content: Text('This document is saved to the $savedUri')),
           );
         }
       }
     }
   }
 
+  /// Imports one document of [fileType] through the platform file picker.
+  ///
+  /// Cancellation returns without changing the editor. File data is read from
+  /// the picked file, including URI-backed files without a local path.
+  /// Read and parsing failures propagate to the caller's asynchronous boundary.
   void _importFile(ExportFileType fileType) async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
+    final file = await FilePicker.pickFile(
       allowedExtensions: [fileType.extension],
       type: FileType.custom,
     );
-    var plainText = '';
-    if (!kIsWeb) {
-      final path = result?.files.single.path;
-      if (path == null) {
-        return;
-      }
-      plainText = await File(path).readAsString();
-    } else {
-      final bytes = result?.files.first.bytes;
-      if (bytes == null) {
-        return;
-      }
-      plainText = const Utf8Decoder().convert(bytes);
+    if (file == null) {
+      return;
     }
+    final plainText = utf8.decode(await file.readAsBytes());
 
     var jsonString = '';
     switch (fileType) {

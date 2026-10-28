@@ -70,7 +70,7 @@ KeyEventResult _toggleAttribute(
   }
 
   final node = editorState.getNodeAtPath(selection.start.path)!;
-  final bool isHeading = isBody ??
+  bool isHeading = isBody ??
       node.type == HeadingBlockKeys.type &&
           node.attributes[HeadingBlockKeys.level] == level;
 

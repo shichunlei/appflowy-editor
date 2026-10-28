@@ -145,7 +145,7 @@ void main() async {
 
         await editor.startTesting();
 
-        final selection = Selection.single(path: [1], startOffset: 0);
+        var selection = Selection.single(path: [1], startOffset: 0);
         await editor.updateSelection(selection);
 
         await editor.pressKey(key: LogicalKeyboardKey.tab);

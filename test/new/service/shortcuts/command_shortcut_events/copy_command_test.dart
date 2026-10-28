@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
@@ -19,14 +18,12 @@ void main() async {
       switch (message.method) {
         case "Clipboard.getData":
           return mockClipboard.getData;
-
         case "Clipboard.setData":
           final args = message.arguments as Map<String, dynamic>;
           mockClipboard = mockClipboard.copyWith(
             text: args['text'],
           );
       }
-
       return null;
     });
   });
@@ -56,7 +53,7 @@ Future<void> _testHandleCopy(
     isControlPressed: Platform.isWindows || Platform.isLinux,
     isMetaPressed: Platform.isMacOS,
   );
-  unawaited(deleteSelectedContent(editor.editorState));
+  deleteSelectedContent(editor.editorState);
   expect(editor.document.root.children.length, 1);
   expect(editor.document.root.children.first.delta!.isEmpty, true);
   await editor.pressKey(

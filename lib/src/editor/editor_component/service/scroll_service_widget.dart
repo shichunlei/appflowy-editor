@@ -43,7 +43,6 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
 
   @override
   void dispose() {
-    scrollController.dispose();
     editorState.selectionNotifier.removeListener(_onSelectionChanged);
     super.dispose();
   }
@@ -86,12 +85,9 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
   void _onSelectionChanged() {
     // should auto scroll after the cursor or selection updated.
     final selection = editorState.selection;
-    final reason = editorState.selectionUpdateReason;
-    // Remote transactions rebase the local selection so it stays valid, but
-    // they must not make this client follow that selection in the viewport.
     if (selection == null ||
-        reason == SelectionUpdateReason.remote ||
-        reason == SelectionUpdateReason.selectAll) {
+        [SelectionUpdateReason.selectAll]
+            .contains(editorState.selectionUpdateReason)) {
       return;
     }
 
@@ -118,32 +114,17 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
           targetRect = selectionRects.first;
           direction = AxisDirection.up;
           break;
-
         case 'MobileSelectionDragMode.rightSelectionHandle':
           targetRect = selectionRects.last;
           direction = AxisDirection.down;
           break;
-
-        case 'MobileSelectionDragMode.cursor':
-          targetRect = selectionRects.last;
-          if (lastSelection != null) {
-            final isMovingUp = selection.end.path < lastSelection!.end.path ||
-                (selection.end.path.equals(lastSelection!.end.path) &&
-                    selection.end.offset < lastSelection!.end.offset);
-            direction = isMovingUp ? AxisDirection.up : AxisDirection.down;
-          }
-          break;
-
         default:
           targetRect = selectionRects.last;
 
-          // sometimes moving up in a long single node may be not working
-          // so we need to special handle this case.
-          final isLastSelectionSingle = lastSelection?.isSingle ?? false;
-          final isLastSelectionPathEqual =
-              lastSelection?.start.path.equals(selection.start.path) ?? false;
-          final isInSingleNode =
-              isLastSelectionSingle && isLastSelectionPathEqual;
+          /// sometimes moving up in a long single node may be not working
+          /// so we need to special handle this case.
+          final isInSingleNode = (lastSelection?.isSingle ?? false) &&
+              lastSelection?.start.path == selection.start.path;
           if (selection.isForward && isInSingleNode) {
             targetRect = selectionRects.first;
           }
@@ -159,8 +140,7 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
             (dragMode.toString() ==
                     'MobileSelectionDragMode.leftSelectionHandle' ||
                 dragMode.toString() ==
-                    'MobileSelectionDragMode.rightSelectionHandle' ||
-                dragMode.toString() == 'MobileSelectionDragMode.cursor');
+                    'MobileSelectionDragMode.rightSelectionHandle');
 
         // Use animation for drag operations, instant for others
         final scrollDuration =

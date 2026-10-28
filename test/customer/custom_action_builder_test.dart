@@ -60,7 +60,9 @@ class CustomActionBuilder extends StatelessWidget {
 
     final editorState = EditorState(document: document);
 
-    final paragraphBuilder = ParagraphBlockComponentBuilder();
+    final paragraphBuilder = ParagraphBlockComponentBuilder(
+      configuration: standardBlockComponentConfiguration,
+    );
     paragraphBuilder.showActions = (_) => true;
     paragraphBuilder.actionBuilder = (blockComponentContext, state) {
       return Container(

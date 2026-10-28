@@ -66,7 +66,7 @@ CommandShortcutEventHandler _pasteCommandHandler = (editorState) {
     }
 
     if (text != null && text.isNotEmpty) {
-      await editorState.pastePlainText(text);
+      editorState.pastePlainText(text);
     }
   }();
 
@@ -104,12 +104,12 @@ extension on EditorState {
     } else {
       await pasteMultiLineNodes(nodes.toList());
     }
-
     return true;
   }
 
   Future<void> pastePlainText(String plainText) async {
     final selectionAttributes = getDeltaAttributesInSelectionStart();
+    // TODO remove this deletion after refactoring pasteHtmlIfAvailable below
     final selection = await deleteSelectionIfNeeded();
 
     if (selection == null) {
@@ -128,14 +128,14 @@ extension on EditorState {
             ..trimRight(),
         )
         .map((paragraph) {
-          final Delta delta = Delta();
+          Delta delta = Delta();
           if (_hrefRegex.hasMatch(paragraph) ||
               _phoneRegex.hasMatch(paragraph)) {
             final match = _hrefRegex.firstMatch(paragraph) ??
                 _phoneRegex.firstMatch(paragraph);
             if (match != null) {
-              final int startPos = match.start;
-              final int endPos = match.end;
+              int startPos = match.start;
+              int endPos = match.end;
               final String? entity = match.group(0);
               if (entity != null) {
                 /// insert the text before the link or phone
@@ -161,7 +161,6 @@ extension on EditorState {
           } else {
             delta.insert(paragraph, attributes: selectionAttributes);
           }
-
           return delta;
         })
         .map((paragraph) => paragraphNode(delta: paragraph))
@@ -197,7 +196,6 @@ extension on EditorState {
       AppFlowyRichTextKeys.href: isPhone ? 'tel:$plainText' : plainText,
     });
     await apply(transaction);
-
     return true;
   }
 }

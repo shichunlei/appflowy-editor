@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
@@ -20,14 +19,12 @@ void main() async {
       switch (message.method) {
         case "Clipboard.getData":
           return mockClipboard.getData;
-
         case "Clipboard.setData":
           final args = message.arguments as Map<String, dynamic>;
           mockClipboard = mockClipboard.copyWith(
             text: args['text'],
           );
       }
-
       return null;
     });
   });
@@ -39,7 +36,7 @@ void main() async {
         final editor = tester.editor..addParagraph(initialText: '');
         await editor.startTesting();
         await editor.updateSelection(
-          Selection.collapsed(Position(path: [0])),
+          Selection.collapsed(Position(path: [0], offset: 0)),
         );
 
         const link = 'https://appflowy.io/';
@@ -70,7 +67,7 @@ void main() async {
         final editor = tester.editor..addParagraph(initialText: '');
         await editor.startTesting();
         await editor.updateSelection(
-          Selection.collapsed(Position(path: [0])),
+          Selection.collapsed(Position(path: [0], offset: 0)),
         );
 
         const textWithLink = 'click https://appflowy.io/ jump to appflowy';
@@ -263,7 +260,7 @@ void main() async {
       await editor.dispose();
     });
 
-    for (final position in ['start', 'end']) {
+    for (var position in ['start', 'end']) {
       testWidgets('paste without format if at $position of formatted text',
           (tester) async {
         const pasteText = 'text';
@@ -386,6 +383,8 @@ Future<String> _testPasteNode(
   return node.type;
 }
 
+/// Uses [tester] to paste [document] repeatedly at the current document end.
+/// Owns and disposes the fixture editor; checks append order and rich-text runs.
 Future<void> _testHandleCopyMultiplePaste(
   WidgetTester tester,
   Document document,
@@ -399,33 +398,29 @@ Future<void> _testHandleCopyMultiplePaste(
     isMetaPressed: Platform.isMacOS,
   );
   handleCopy(editor.editorState);
-  unawaited(deleteSelectedContent(editor.editorState));
+  deleteSelectedContent(editor.editorState);
 
   pasteHTML(
     editor.editorState,
     documentToHTML(Document.fromJson(paragraphData)),
   );
-  expect(
-    editor.editorState.document.toJson(),
-    paragraphData,
-  );
-  await editor.updateSelection(Selection.single(path: [0], startOffset: 10));
-  pasteHTML(
-    editor.editorState,
-    documentToHTML(Document.fromJson(paragraphData)),
-  );
-  expect(
-    editor.document.toJson(),
-    secondParagraph,
+  expect(editor.editorState.document.toJson(), paragraphData);
+  await editor.updateSelection(
+    Selection.single(
+      path: [0],
+      startOffset: editor.nodeAtPath([0])!.delta!.length,
+    ),
   );
   pasteHTML(
     editor.editorState,
     documentToHTML(Document.fromJson(paragraphData)),
   );
-  expect(
-    editor.document.toJson(),
-    thirdParagraph,
+  expect(editor.document.toJson(), secondParagraph);
+  pasteHTML(
+    editor.editorState,
+    documentToHTML(Document.fromJson(paragraphData)),
   );
+  expect(editor.document.toJson(), thirdParagraph);
   await editor.dispose();
 }
 
@@ -442,7 +437,7 @@ Future<void> _testHandleCopyPaste(
     isMetaPressed: Platform.isMacOS,
   );
   handleCopy(editor.editorState);
-  unawaited(deleteSelectedContent(editor.editorState));
+  deleteSelectedContent(editor.editorState);
   await editor.updateSelection(Selection.collapsed(Position(path: [0])));
   await editor.pressKey(
     key: LogicalKeyboardKey.keyP,

@@ -228,7 +228,7 @@ void main() async {
       expect(find.byType(FindAndReplaceMenuWidget), findsNothing);
 
       // We expect that the current selected node is NOT highlighted.
-      checkIfNotHighlighted(node, selection);
+      checkIfNotHighlighted(node, selection, expectedResult: true);
 
       await editor.dispose();
     });
@@ -265,7 +265,7 @@ void main() async {
       expect(node, isNotNull);
 
       // We expect that the current node at path 1 to be NOT highlighted.
-      checkIfNotHighlighted(node!, selectionAtNode1);
+      checkIfNotHighlighted(node!, selectionAtNode1, expectedResult: true);
 
       // Change the pattern to Flutter and search
       pattern = 'Flutter';
@@ -283,7 +283,7 @@ void main() async {
       expect(node, isNotNull);
 
       // We expect that the current node at path 0 to be NOT highlighted.
-      checkIfNotHighlighted(node!, selectionAtNode0);
+      checkIfNotHighlighted(node!, selectionAtNode0, expectedResult: true);
 
       await editor.dispose();
     });

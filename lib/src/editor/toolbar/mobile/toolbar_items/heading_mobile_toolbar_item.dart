@@ -1,17 +1,17 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
+/// The mobile menu for choosing a heading level for selected blocks.
 final headingMobileToolbarItem = MobileToolbarItem.withMenu(
-  itemIconBuilder: (context, __, ___) => AFMobileIcon(
+  itemIconBuilder: (context, _, _) => AFMobileIcon(
     afMobileIcons: AFMobileIcons.heading,
     color: MobileToolbarTheme.of(context).iconColor,
   ),
-  itemMenuBuilder: (_, editorState, __) {
+  itemMenuBuilder: (_, editorState, _) {
     final selection = editorState.selection;
     if (selection == null) {
       return const SizedBox.shrink();
     }
-
     return _HeadingMenu(
       selection,
       editorState,
@@ -114,12 +114,13 @@ class _HeadingMenuState extends State<_HeadingMenu> {
 }
 
 class HeadingUnit {
+  final AFMobileIcons icon;
+  final String label;
+  final int level;
+
   HeadingUnit({
     required this.icon,
     required this.label,
     required this.level,
   });
-  final AFMobileIcons icon;
-  final String label;
-  final int level;
 }

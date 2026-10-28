@@ -1,17 +1,17 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
+/// The mobile menu for switching selected blocks between bullet and number lists.
 final listMobileToolbarItem = MobileToolbarItem.withMenu(
-  itemIconBuilder: (context, __, ___) => AFMobileIcon(
+  itemIconBuilder: (context, _, _) => AFMobileIcon(
     afMobileIcons: AFMobileIcons.list,
     color: MobileToolbarTheme.of(context).iconColor,
   ),
-  itemMenuBuilder: (_, editorState, __) {
+  itemMenuBuilder: (_, editorState, _) {
     final selection = editorState.selection;
     if (selection == null) {
       return const SizedBox.shrink();
     }
-
     return _ListMenu(editorState, selection);
   },
 );
@@ -42,7 +42,6 @@ class _ListMenuState extends State<_ListMenu> {
       name: 'numbered_list',
     ),
   ];
-
   @override
   Widget build(BuildContext context) {
     final btnList = lists.map((currentList) {
@@ -88,12 +87,13 @@ class _ListMenuState extends State<_ListMenu> {
 }
 
 class ListUnit {
+  final AFMobileIcons icon;
+  final String label;
+  final String name;
+
   ListUnit({
     required this.icon,
     required this.label,
     required this.name,
   });
-  final AFMobileIcons icon;
-  final String label;
-  final String name;
 }

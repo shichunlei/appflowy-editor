@@ -20,6 +20,23 @@ class TodoListBlockKeys {
   static const String textDirection = blockComponentTextDirection;
 }
 
+/// Creates a todo list node with its initial checked state.
+///
+/// [text] supplies initial content when [delta] is absent. [attributes] are
+/// merged after the generated checked state and delta, so matching keys
+/// override them. [textDirection] is stored when set, and [children] defaults
+/// to an empty list.
+///
+/// ```dart
+/// import 'package:appflowy_editor/appflowy_editor.dart';
+///
+/// final node = todoListNode(checked: false, text: 'Review changes');
+/// ```
+///
+/// [checked] determines whether the item starts checked. [text] is the initial
+/// item text. [delta] is its structured content. [textDirection] is an
+/// optional direction value. [attributes] contains additional or overriding
+/// node attributes. [children] contains nested nodes.
 Node todoListNode({
   required bool checked,
   String? text,
@@ -34,8 +51,8 @@ Node todoListNode({
       TodoListBlockKeys.checked: checked,
       TodoListBlockKeys.delta:
           (delta ?? (Delta()..insert(text ?? ''))).toJson(),
-      if (attributes != null) ...attributes,
-      if (textDirection != null) TodoListBlockKeys.textDirection: textDirection,
+      ...?attributes,
+      TodoListBlockKeys.textDirection: textDirection,
     },
     children: children ?? [],
   );
@@ -65,7 +82,6 @@ class TodoListBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
-
     return TodoListBlockComponentWidget(
       key: node.key,
       node: node,
@@ -141,6 +157,9 @@ class _TodoListBlockComponentWidgetState
   bool get checked =>
       widget.node.attributes[TodoListBlockKeys.checked] ?? false;
 
+  /// Builds the native todo text and checkbox in [context].
+  /// [withBackgroundColor] controls the block background, defaulting to true.
+  /// Inline styles remain authoritative; checked text adds completion styling.
   @override
   Widget buildComponent(
     BuildContext context, {
@@ -155,6 +174,7 @@ class _TodoListBlockComponentWidgetState
       alignment: alignment,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         textDirection: textDirection,
         children: [
@@ -178,7 +198,7 @@ class _TodoListBlockComponentWidgetState
               placeholderText: placeholderText,
               textDirection: textDirection,
               textSpanDecorator: (textSpan) => textSpan
-                  .updateTextStyle(textStyleWithTextSpan())
+                  .updateTextStyle(textStyleWithTextSpan(textSpan: textSpan))
                   .updateTextStyle(
                     widget.textStyleBuilder?.call(checked) ??
                         defaultTextStyle(),
@@ -267,7 +287,6 @@ class _TodoListBlockComponentWidgetState
     if (!checked) {
       return null;
     }
-
     return TextStyle(
       decoration: TextDecoration.lineThrough,
       color: Colors.grey.shade400,
@@ -288,7 +307,6 @@ class _TodoListIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final textScaleFactor =
         context.read<EditorState>().editorStyle.textScaleFactor;
-
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(

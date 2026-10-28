@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:appflowy_editor/appflowy_editor.dart';
 
 final _listTypes = [
@@ -68,7 +66,6 @@ extension EditorCopyPaste on EditorState {
     if (startWithNonDeltaBlock) {
       transaction.insertNodes(node.path.next, nodes);
       await apply(transaction);
-
       return;
     }
 
@@ -87,6 +84,7 @@ extension EditorCopyPaste on EditorState {
       if (lastNode.delta != null) {
         nodes.last.insertDelta(
           delta.slice(selection.endIndex),
+          insertAfter: true,
         );
       }
     }
@@ -130,12 +128,11 @@ extension EditorCopyPaste on EditorState {
 
     // delete the selection first.
     if (!selection.isCollapsed) {
-      await deleteSelection(selection);
+      deleteSelection(selection);
     }
 
     // fetch selection again.selection = editorState.selection;
     assert(this.selection?.isCollapsed == true);
-
     return this.selection;
   }
 
@@ -151,7 +148,6 @@ extension EditorCopyPaste on EditorState {
         ...calculatePath([0], nodes.last.children.toList()),
       ];
     }
-
     return path;
   }
 
@@ -159,7 +155,6 @@ extension EditorCopyPaste on EditorState {
     if (nodes.last.children.isNotEmpty) {
       return calculateLength(nodes.last.children.toList());
     }
-
     return nodes.last.delta?.length ?? 0;
   }
 }

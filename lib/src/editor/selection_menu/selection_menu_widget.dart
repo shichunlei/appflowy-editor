@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
@@ -6,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 
-typedef SelectionMenuItemHandler = Future<void> Function(
+typedef SelectionMenuItemHandler = void Function(
   EditorState editorState,
   SelectionMenuService menuService,
   BuildContext context,
@@ -20,6 +19,77 @@ typedef SelectionMenuItemNameBuilder = Widget Function(
 
 /// Selection Menu Item
 class SelectionMenuItem {
+  SelectionMenuItem({
+    required this._getName,
+    required this.icon,
+    required this.keywords,
+    required SelectionMenuItemHandler handler,
+    this.nameBuilder,
+    this.deleteKeywords = false,
+    this.deleteSlash = true,
+  }) {
+    this.handler = (editorState, menuService, context) {
+      if (deleteSlash || deleteKeywords) {
+        _deleteSlash(editorState);
+      }
+
+      handler(editorState, menuService, context);
+      onSelected?.call();
+    };
+  }
+
+  final String Function() _getName;
+  final Widget Function(
+    EditorState editorState,
+    bool onSelected,
+    SelectionMenuStyle style,
+  ) icon;
+  final SelectionMenuItemNameBuilder? nameBuilder;
+
+  String get name => _getName();
+
+  /// Customizes keywords for item.
+  ///
+  /// The keywords are used to quickly retrieve items.
+  final List<String> keywords;
+  List<String> get allKeywords => keywords + [name.toLowerCase()];
+  late final SelectionMenuItemHandler handler;
+
+  VoidCallback? onSelected;
+
+  bool deleteSlash;
+  bool deleteKeywords;
+
+  void _deleteSlash(EditorState editorState) {
+    final selection = editorState.selection;
+    if (selection == null || !selection.isCollapsed) {
+      return;
+    }
+    final node = editorState.getNodeAtPath(selection.end.path);
+    final delta = node?.delta;
+    if (node == null || delta == null) {
+      return;
+    }
+    final end = selection.start.offset;
+    int deletedIndex = 0;
+
+    if (deleteKeywords) {
+      deletedIndex = 0;
+    } else if (deleteSlash) {
+      deletedIndex = delta.toPlainText().substring(0, end).lastIndexOf('/');
+    }
+
+    // delete all the texts after '/' along with '/'
+    final transaction = editorState.transaction
+      ..deleteText(
+        node,
+        deletedIndex,
+        end - deletedIndex,
+      );
+
+    editorState.apply(transaction);
+  }
+
   /// Creates a selection menu entry for inserting a [Node].
   /// [getName] and [iconData] define the appearance within the selection menu.
   ///
@@ -34,10 +104,8 @@ class SelectionMenuItem {
   factory SelectionMenuItem.node({
     required String Function() getName,
     required List<String> keywords,
-    required FutureOr<Node> Function(
-      EditorState editorState,
-      BuildContext context,
-    ) nodeBuilder,
+    required Node Function(EditorState editorState, BuildContext context)
+        nodeBuilder,
     IconData? iconData,
     Widget Function(
       EditorState editorState,
@@ -46,7 +114,6 @@ class SelectionMenuItem {
     )? iconBuilder,
     SelectionMenuItemNameBuilder? nameBuilder,
     bool Function(EditorState editorState, Node node)? insertBefore,
-    bool Function(EditorState editorState, Node node)? insertAfter,
     bool Function(EditorState editorState, Node node)? replace,
     Selection? Function(
       EditorState editorState,
@@ -78,7 +145,7 @@ class SelectionMenuItem {
         return const SizedBox.shrink();
       },
       keywords: keywords,
-      handler: (editorState, _, context) async {
+      handler: (editorState, _, context) {
         final selection = editorState.selection;
         if (selection == null || !selection.isCollapsed) {
           return;
@@ -88,7 +155,7 @@ class SelectionMenuItem {
         if (node == null || delta == null) {
           return;
         }
-        final newNode = await nodeBuilder(editorState, context);
+        final newNode = nodeBuilder(editorState, context);
         final transaction = editorState.transaction;
         final bReplace = replace?.call(editorState, node) ?? false;
         final bInsertBefore = insertBefore?.call(editorState, node) ?? false;
@@ -115,89 +182,9 @@ class SelectionMenuItem {
           transaction.deleteNode(node);
         }
 
-        await editorState.apply(transaction);
-
-        insertAfter?.call(editorState, newNode);
+        editorState.apply(transaction);
       },
     );
-  }
-
-  SelectionMenuItem({
-    required String Function() getName,
-    required this.icon,
-    required this.keywords,
-    required SelectionMenuItemHandler handler,
-    this.nameBuilder,
-    this.deleteKeywords = false,
-    this.deleteSlash = true,
-  }) : _getName = getName {
-    this.handler = (editorState, menuService, context) async {
-      try {
-        if (deleteSlash || deleteKeywords) {
-          await _deleteSlash(editorState);
-        }
-      } catch (e) {
-        AppFlowyEditorLog.ui.debug('Error deleting slash or keywords: $e');
-      }
-
-      if (context.mounted) {
-        await handler(editorState, menuService, context);
-      }
-      onSelected?.call();
-    };
-  }
-
-  final String Function() _getName;
-  final Widget Function(
-    EditorState editorState,
-    bool onSelected,
-    SelectionMenuStyle style,
-  ) icon;
-  final SelectionMenuItemNameBuilder? nameBuilder;
-
-  String get name => _getName();
-
-  /// Customizes keywords for item.
-  ///
-  /// The keywords are used to quickly retrieve items.
-  final List<String> keywords;
-
-  List<String> get allKeywords => keywords + [name.toLowerCase()];
-  late final SelectionMenuItemHandler handler;
-
-  VoidCallback? onSelected;
-
-  bool deleteSlash;
-  bool deleteKeywords;
-
-  Future<void> _deleteSlash(EditorState editorState) async {
-    final selection = editorState.selection;
-    if (selection == null || !selection.isCollapsed) {
-      return;
-    }
-    final node = editorState.getNodeAtPath(selection.end.path);
-    final delta = node?.delta;
-    if (node == null || delta == null) {
-      return;
-    }
-    final end = selection.start.offset;
-    int deletedIndex = 0;
-
-    if (deleteKeywords) {
-      deletedIndex = 0;
-    } else if (deleteSlash) {
-      deletedIndex = delta.toPlainText().substring(0, end).lastIndexOf('/');
-    }
-
-    // delete all the texts after '/' along with '/'
-    final transaction = editorState.transaction
-      ..deleteText(
-        node,
-        deletedIndex,
-        end - deletedIndex,
-      );
-
-    await editorState.apply(transaction);
   }
 }
 
@@ -320,9 +307,7 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
   int _searchCounter = 0;
 
   String _keyword = '';
-
   String get keyword => _keyword;
-
   set keyword(String newKeyword) {
     _keyword = newKeyword;
 
@@ -336,7 +321,6 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
             if (value) {
               maxKeywordLength = max(maxKeywordLength, keyword.length);
             }
-
             return value;
           }),
         )
@@ -430,7 +414,7 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
     int selectedIndex,
   ) {
     if (widget.singleColumn) {
-      final List<Widget> itemWidgets = [];
+      List<Widget> itemWidgets = [];
       for (var i = 0; i < items.length; i++) {
         itemWidgets.add(
           AutoScrollTag(
@@ -447,7 +431,6 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
           ),
         );
       }
-
       return ConstrainedBox(
         constraints: const BoxConstraints(
           maxHeight: 300,
@@ -461,7 +444,7 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
         ),
       );
     } else {
-      final List<Widget> columns = [];
+      List<Widget> columns = [];
       List<Widget> itemWidgets = [];
       // apply item count filter
       if (itemCountFilter > 0) {
@@ -497,7 +480,6 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
         );
         itemWidgets = [];
       }
-
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: columns,
@@ -546,12 +528,10 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
       if (0 <= _selectedIndex && _selectedIndex < _showingItems.length) {
         _showingItems[_selectedIndex]
             .handler(widget.editorState, widget.menuService, context);
-
         return KeyEventResult.handled;
       }
     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
       widget.onExit();
-
       return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.backspace) {
       if (_searchCounter > 0) {
@@ -563,14 +543,12 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
         keyword = keyword.substring(0, keyword.length - 1);
       }
       _deleteLastCharacters();
-
       return KeyEventResult.handled;
     } else if (event.character != null &&
         !arrowKeys.contains(event.logicalKey) &&
         event.logicalKey != LogicalKeyboardKey.tab) {
       keyword += event.character!;
       _insertText(event.character!);
-
       return KeyEventResult.handled;
     }
 
@@ -624,14 +602,12 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
         _selectedIndex = newSelectedIndex.clamp(0, _showingItems.length - 1);
         _scrollToSelectedIndex();
       });
-
       return KeyEventResult.handled;
     }
-
     return KeyEventResult.ignored;
   }
 
-  Future<void> _deleteLastCharacters({int length = 1}) async {
+  void _deleteLastCharacters({int length = 1}) {
     final selection = widget.editorState.selection;
     if (selection == null || !selection.isCollapsed) {
       return;
@@ -649,10 +625,10 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
         selection.start.offset - length,
         length,
       );
-    await widget.editorState.apply(transaction);
+    widget.editorState.apply(transaction);
   }
 
-  Future<void> _insertText(String text) async {
+  void _insertText(String text) {
     final selection = widget.editorState.selection;
     if (selection == null || !selection.isSingle) {
       return;
@@ -668,6 +644,6 @@ class _SelectionMenuWidgetState extends State<SelectionMenuWidget> {
       selection.end.offset,
       text,
     );
-    await widget.editorState.apply(transaction);
+    widget.editorState.apply(transaction);
   }
 }

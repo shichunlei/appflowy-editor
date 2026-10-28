@@ -5,9 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class MockClipboard {
-  const MockClipboard({required this.text, required this.html});
   final String? text;
   final String? html;
+
+  const MockClipboard({required this.text, required this.html});
 
   MockClipboard copyWith({
     String? text,
@@ -31,21 +32,19 @@ void main() {
       switch (message.method) {
         case "Clipboard.getData":
           return mockClipboard.getData;
-
         case "Clipboard.setData":
           final args = message.arguments as Map<String, dynamic>;
           mockClipboard = mockClipboard.copyWith(
             text: args['text'],
           );
       }
-
       return null;
     });
   });
 
   group('Clipboard tests', () {
     test('AppFlowyClipboardData constructor', () {
-      const data = AppFlowyClipboardData();
+      const data = AppFlowyClipboardData(text: null, html: null);
 
       expect(data.text, null);
       expect(data.html, null);
@@ -62,7 +61,8 @@ void main() {
           home: Column(
             children: [
               TextButton(
-                onPressed: () async => AppFlowyClipboard.setData(text: rawText),
+                onPressed: () async =>
+                    await AppFlowyClipboard.setData(text: rawText),
                 child: const Text('setData'),
               ),
               TextButton(

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -38,12 +37,10 @@ void main() async {
         Selection.collapsed(Position(path: [0], offset: text.length)),
       );
       const pastedText = 'pasted text';
-      unawaited(
-        editor.editorState.pasteMultiLineNodes([
-          imageNode(url: ''),
-          paragraphNode(text: pastedText),
-        ]),
-      );
+      editor.editorState.pasteMultiLineNodes([
+        imageNode(url: ''),
+        paragraphNode(text: pastedText),
+      ]);
       await tester.pumpAndSettle();
 
       expect(editor.nodeAtPath([0])!.delta!.toPlainText(), text);
@@ -63,12 +60,10 @@ void main() async {
         Selection.collapsed(Position(path: [0], offset: text.length)),
       );
       const pastedText = 'pasted text';
-      unawaited(
-        editor.editorState.pasteMultiLineNodes([
-          paragraphNode(text: pastedText),
-          imageNode(url: ''),
-        ]),
-      );
+      editor.editorState.pasteMultiLineNodes([
+        paragraphNode(text: pastedText),
+        imageNode(url: ''),
+      ]);
       await tester.pumpAndSettle();
 
       expect(editor.nodeAtPath([0])!.delta!.toPlainText(), text + pastedText);

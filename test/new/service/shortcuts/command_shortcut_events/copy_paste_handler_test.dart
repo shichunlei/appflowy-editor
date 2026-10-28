@@ -1,8 +1,10 @@
 import 'dart:io';
 
-import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/services.dart';
+
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:appflowy_editor/appflowy_editor.dart';
 
 import '../../../../infra/clipboard_test.dart';
 import '../../../infra/testable_editor.dart';
@@ -18,14 +20,12 @@ void main() async {
       switch (message.method) {
         case "Clipboard.getData":
           return mockClipboard.getData;
-
         case "Clipboard.setData":
           final args = message.arguments as Map<String, dynamic>;
           mockClipboard = mockClipboard.copyWith(
             text: args['text'],
           );
       }
-
       return null;
     });
   });
@@ -42,6 +42,12 @@ void main() async {
         (tester) async {
       await _testHandleCopy(tester, Document.fromJson(data));
     });
+    // TODO: fix this test
+    // testWidgets(
+    //     'Presses Command + A in nested document and copy text nestednode',
+    //     (tester) async {
+    // await _testNestedNodeCopyPaste(tester, Document.fromJson(exampledoc));
+    // });
 
     testWidgets('update selection and execute cut command', (tester) async {
       await _testCutHandle(tester, Document.fromJson(cutData));
@@ -57,7 +63,7 @@ Future<void> _testCutHandle(
 
   await editor.updateSelection(
     Selection(
-      start: Position(path: [2]),
+      start: Position(path: [2], offset: 0),
       end: Position(path: [2], offset: 69),
     ),
   );

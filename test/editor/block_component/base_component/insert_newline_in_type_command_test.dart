@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -22,12 +21,12 @@ void main() {
 
       editorState.selection = Selection.collapsed(Position(path: [0, 1]));
 
-      unawaited(insertNewLineAfterBulletedList.execute(editorState));
-      final Node? node1 = editorState.getNodeAtPath([1]);
+      insertNewLineAfterBulletedList.execute(editorState);
+      Node? node1 = editorState.getNodeAtPath([1]);
       expect(node1?.type, BulletedListBlockKeys.type);
 
-      unawaited(insertNewLineAfterBulletedList.execute(editorState));
-      final Node? node2 = editorState.getNodeAtPath([1]);
+      insertNewLineAfterBulletedList.execute(editorState);
+      Node? node2 = editorState.getNodeAtPath([1]);
 
       expect(node2?.type, ParagraphBlockKeys.type);
     });
@@ -46,12 +45,12 @@ void main() {
 
       editorState.selection = Selection.collapsed(Position(path: [0, 1]));
 
-      unawaited(insertNewLineAfterTodoList.execute(editorState));
-      final Node? node1 = editorState.getNodeAtPath([1]);
+      insertNewLineAfterTodoList.execute(editorState);
+      Node? node1 = editorState.getNodeAtPath([1]);
       expect(node1?.type, TodoListBlockKeys.type);
 
-      unawaited(insertNewLineAfterTodoList.execute(editorState));
-      final Node? node2 = editorState.getNodeAtPath([1]);
+      insertNewLineAfterTodoList.execute(editorState);
+      Node? node2 = editorState.getNodeAtPath([1]);
 
       expect(node2?.type, ParagraphBlockKeys.type);
     });
@@ -69,12 +68,12 @@ void main() {
 
       editorState.selection = Selection.collapsed(Position(path: [0, 1]));
 
-      unawaited(insertNewLineAfterNumberedList.execute(editorState));
-      final Node? node1 = editorState.getNodeAtPath([1]);
+      insertNewLineAfterNumberedList.execute(editorState);
+      Node? node1 = editorState.getNodeAtPath([1]);
       expect(node1?.type, NumberedListBlockKeys.type);
 
-      unawaited(insertNewLineAfterNumberedList.execute(editorState));
-      final Node? node2 = editorState.getNodeAtPath([1]);
+      insertNewLineAfterNumberedList.execute(editorState);
+      Node? node2 = editorState.getNodeAtPath([1]);
 
       expect(node2?.type, ParagraphBlockKeys.type);
     });

@@ -22,7 +22,6 @@ class Transaction {
       compose();
       markNeedsComposing = false;
     }
-
     return _operations;
   }
 
@@ -92,35 +91,13 @@ class Transaction {
     );
   }
 
-  /// Updates a node's type while keeping the same node id and children.
-  ///
-  /// Unlike [updateNode], this replaces the node attributes. Block types have
-  /// different data contracts, so carrying old type-specific attributes into
-  /// the new block type would leak stale state.
-  void updateNodeType(
-    Node node,
-    String type,
-    Attributes attributes,
-  ) {
-    add(
-      UpdateNodeTypeOperation(
-        node.path,
-        node.id,
-        type,
-        node.type,
-        {...attributes},
-        {...node.attributes},
-      ),
-    );
-  }
-
   /// Deletes the [Node] in the document.
   void deleteNode(Node node) {
     deleteNodesAtPath(node.path);
     if (beforeSelection != null) {
       final nodePath = node.path;
       final selectionPath = beforeSelection!.start.path;
-      if (!nodePath.equals(selectionPath)) {
+      if (!(nodePath.equals(selectionPath))) {
         afterSelection = beforeSelection;
       }
     }
@@ -167,7 +144,6 @@ class Transaction {
     if (beforeSelection != null) {
       json['before_selection'] = beforeSelection!.toJson();
     }
-
     return json;
   }
 
@@ -189,7 +165,6 @@ class Transaction {
           op.inverted.compose(last.inverted),
         );
         operations[_operations.length - 1] = newOp;
-
         return;
       }
     }
@@ -233,14 +208,12 @@ extension TextTransaction on Transaction {
     final delta = node.delta;
     if (delta == null) {
       assert(false, 'The node must have a delta.');
-
       return;
     }
 
     if (index < 0 || index > delta.length) {
       AppFlowyEditorLog.editor
           .info('The index($index) is out of range or negative.');
-
       return;
     }
 
@@ -271,7 +244,6 @@ extension TextTransaction on Transaction {
     final delta = node.delta;
     if (delta == null) {
       assert(false, 'The node must have a delta.');
-
       return;
     }
 
@@ -300,7 +272,6 @@ extension TextTransaction on Transaction {
     final delta = node.delta;
     if (delta == null) {
       assert(false, 'The node must have a delta.');
-
       return;
     }
 
@@ -445,7 +416,6 @@ extension TextTransaction on Transaction {
   void compose() {
     if (_composeMap.isEmpty) {
       markNeedsComposing = false;
-
       return;
     }
     for (final entry in _composeMap.entries) {
@@ -490,7 +460,6 @@ extension TextTransaction on Transaction {
         selection.endIndex - selection.startIndex,
         texts.first,
       );
-
       return;
     }
 

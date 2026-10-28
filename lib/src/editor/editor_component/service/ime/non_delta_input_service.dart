@@ -34,69 +34,82 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
 
   TextEditingValue? _currentTextEditingValue;
 
+  /// Replace cached platform state with [newValue]; null means disconnected.
+  /// The revision prevents an older rejected callback from overwriting a newer
+  /// projection, attachment or close that happened while it was awaiting.
   set currentTextEditingValue(TextEditingValue? newValue) {
     _currentTextEditingValue = newValue;
+    _inputRevision++;
   }
+
+  /// Revision of cached state and connection lifecycle, owned by this service.
+  int _inputRevision = 0;
+
+  /// Monotonic identity of this service's platform input session. Opening a new
+  /// connection or closing invalidates awaiting callbacks from earlier sessions;
+  /// refreshing content on the same connection does not change the identity.
+  int get connectionEpoch => _connectionEpoch;
+
+  /// Separate from cache revisions so ordinary selection refreshes keep pending
+  /// input in the same live platform session valid.
+  int _connectionEpoch = 0;
 
   TextInputConnection? _textInputConnection;
 
-  final String debounceKey = 'updateEditingValue';
+  /// Instance-owned debounce key; closing an older editor must not cancel
+  /// pending platform input belonging to a different editor's service.
+  late final String debounceKey =
+      'updateEditingValue-${identityHashCode(this)}';
 
   // when using gesture to move cursor on mobile, the floating cursor will be visible
   bool _isFloatingCursorVisible = false;
 
+  /// Apply borrowed [deltas] in order. Stop at the first rejected callback and
+  /// restore composing state only if no newer attachment changed the cache.
   @override
   Future<bool> apply(List<TextEditingDelta> deltas) async {
     final formattedDeltas = deltas.map((e) => e.format()).toList();
-    bool willApply = true;
+    final revision = _inputRevision;
+    final previousComposing = composingTextRange;
     for (final delta in formattedDeltas) {
       _updateComposing(delta);
+      bool accepted = true;
       if (delta is TextEditingDeltaInsertion) {
-        if (!(await onInsert(delta))) willApply = false;
+        accepted = await onInsert(delta);
       } else if (delta is TextEditingDeltaDeletion) {
-        if (!(await onDelete(delta))) willApply = false;
+        accepted = await onDelete(delta);
       } else if (delta is TextEditingDeltaReplacement) {
-        if (!(await onReplace(delta))) willApply = false;
+        accepted = await onReplace(delta);
       } else if (delta is TextEditingDeltaNonTextUpdate) {
-        if (!(await onNonTextUpdate(delta))) willApply = false;
+        accepted = await onNonTextUpdate(delta);
+      }
+      if (!accepted) {
+        if (_inputRevision == revision) composingTextRange = previousComposing;
+        return false;
       }
     }
-
-    return willApply;
+    return true;
   }
 
+  /// Attach or refresh platform input from borrowed [textEditingValue] using
+  /// [configuration]. Invalid or unchanged values are ignored; a newly opened
+  /// connection advances [connectionEpoch], while same-session refreshes retain
+  /// it. This service owns the connection and releases it in [close].
   @override
   void attach(
     TextEditingValue textEditingValue,
     TextInputConfiguration configuration,
   ) {
     final formattedValue = textEditingValue.format();
-
-    // On Windows, the IME (e.g. Korean / other CJK) owns the editing state
-    // while a composing region is active. Pushing `setEditingState` back to the
-    // engine mid-composition cancels/forks the composition and corrupts the
-    // text (jamo get scrambled / duplicated). The text input connection is
-    // already attached at this point, so we simply skip re-attaching while a
-    // composition is in progress and let the IME drive the state.
-    final composing = composingTextRange;
-    if (PlatformExtension.isWindows &&
-        composing != null &&
-        composing.isValid &&
-        !composing.isCollapsed) {
-      return;
-    }
-
     if (!formattedValue.isValid() ||
-        currentTextEditingValue == formattedValue) {
+        (currentTextEditingValue == formattedValue && attached)) {
       return;
     }
 
     if (_textInputConnection == null ||
         _textInputConnection!.attached == false) {
-      _textInputConnection = TextInput.attach(
-        this,
-        configuration,
-      );
+      _textInputConnection = TextInput.attach(this, configuration);
+      _connectionEpoch++;
     }
 
     Debounce.cancel(debounceKey);
@@ -112,17 +125,11 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
     );
   }
 
+  /// Schedule platform [value] as an IME delta. Rejected input restores the
+  /// previous cache and platform state only while this connection is current;
+  /// a projection or close supersedes the pending callback.
   @override
   void updateEditingValue(TextEditingValue value) {
-    // Compensate for a Flutter Windows behavior change: during IME composition
-    // (e.g. Korean / other CJK), the engine reports the caret collapsed at the
-    // START (left edge) of the composing region. The downstream insert/replace
-    // logic assumes the caret sits at the END of the composing text, so without
-    // this normalization each new jamo is inserted to the LEFT of the syllable
-    // and the text ends up reversed/scrambled (e.g. "ㅕㄴㅇ와" instead of the
-    // platform's "와ㅕㄴㅇ").
-    value = _normalizeComposingSelection(value);
-
     if (currentTextEditingValue == value) {
       return;
     }
@@ -134,11 +141,11 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
       AppFlowyEditorLog.editor.debug(
         'ignore updateEditingValue event when the floating cursor is visible',
       );
-
       return;
     }
 
     final deltas = getTextEditingDeltas(currentTextEditingValue, value);
+    final scheduledRevision = _inputRevision;
     // On mobile, the IME will send a lot of updateEditingValue events, so we
     // need to debounce it to combine them together.
     Debounce.debounce(
@@ -147,19 +154,27 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
           ? const Duration(milliseconds: 10)
           : Duration.zero,
       () async {
+        if (_inputRevision != scheduledRevision || !attached) return;
         final oldValue = _currentTextEditingValue?.copyWith();
         currentTextEditingValue = value;
+        final pendingRevision = _inputRevision;
         final willApply = await apply(deltas);
-        if (!willApply) {
+        if (!willApply && _inputRevision == pendingRevision && attached) {
           currentTextEditingValue = oldValue;
-          _textInputConnection?.setEditingState(oldValue!);
+          if (oldValue != null) {
+            _textInputConnection?.setEditingState(oldValue);
+          }
         }
       },
     );
   }
 
+  /// Cancel queued input and close this service's connection. Repeated calls
+  /// are safe; pending asynchronous callbacks cannot restore the closed cache.
   @override
   void close() {
+    _connectionEpoch++;
+    Debounce.cancel(debounceKey);
     keepEditorFocusNotifier.reset();
     currentTextEditingValue = null;
     composingTextRange = null;
@@ -180,8 +195,13 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
     composingTextRange = TextRange.empty;
   }
 
+  /// Invalidate pending input when the platform ends this connection, such as
+  /// dismissing the keyboard with the system back action. Cache cleanup follows
+  /// the same ownership rules as an explicit [close].
   @override
-  void connectionClosed() {}
+  void connectionClosed() {
+    close();
+  }
 
   @override
   void insertTextPlaceholder(Size size) {}
@@ -189,7 +209,6 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
   @override
   Future<void> performAction(TextInputAction action) async {
     AppFlowyEditorLog.editor.debug('performAction: $action');
-
     return onPerformAction(action);
   }
 
@@ -213,11 +232,9 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
       case FloatingCursorDragState.Start:
         _isFloatingCursorVisible = true;
         break;
-
       case FloatingCursorDragState.Update:
         _isFloatingCursorVisible = true;
         break;
-
       case FloatingCursorDragState.End:
         _isFloatingCursorVisible = false;
         break;
@@ -245,10 +262,7 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
       final oldText = currentTextEditingValue.text;
       final selection = currentTextEditingValue.selection;
       final deleteRange = selection.isCollapsed
-          ? TextRange(
-              start: selection.start - 1,
-              end: selection.end,
-            )
+          ? TextRange(start: selection.start - 1, end: selection.end)
           : selection;
       final deleteSelection = TextSelection(
         baseOffset: selection.baseOffset - 1,
@@ -274,39 +288,20 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
   @override
   void insertContent(KeyboardInsertedContent content) {
     assert(
-      contentInsertionConfiguration?.allowedMimeTypes
-              .contains(content.mimeType) ??
+      contentInsertionConfiguration?.allowedMimeTypes.contains(
+            content.mimeType,
+          ) ??
           false,
     );
     contentInsertionConfiguration?.onContentInserted.call(content);
-  }
-
-  // On Windows the IME reports the caret at the start of the composing region
-  // during composition; move it to the end so the rest of the pipeline (which
-  // assumes caret-at-end) inserts the composing text in the correct position.
-  TextEditingValue _normalizeComposingSelection(TextEditingValue value) {
-    if (!PlatformExtension.isWindows) {
-      return value;
-    }
-    final composing = value.composing;
-    final selection = value.selection;
-    if (composing.isValid &&
-        !composing.isCollapsed &&
-        selection.isCollapsed &&
-        selection.baseOffset == composing.start) {
-      return value.copyWith(
-        selection: TextSelection.collapsed(offset: composing.end),
-      );
-    }
-
-    return value;
   }
 
   void _updateComposing(TextEditingDelta delta) {
     if (delta is TextEditingDeltaNonTextUpdate) {
       composingTextRange = delta.composing;
     } else {
-      composingTextRange = composingTextRange != null &&
+      composingTextRange =
+          composingTextRange != null &&
               composingTextRange!.start != -1 &&
               delta.composing.end != -1
           ? TextRange(
@@ -335,7 +330,6 @@ extension on TextEditingValue {
         selection.extentOffset > text.length) {
       return false;
     }
-
     return true;
   }
 
@@ -387,12 +381,12 @@ extension on TextEditingDelta {
 extension TextEditingDeltaInsertionExtension on TextEditingDeltaInsertion {
   TextEditingDeltaInsertion format() {
     final startWithSpace = oldText.startsWith(_whitespace);
-
     return TextEditingDeltaInsertion(
       oldText: startWithSpace ? oldText << _len : oldText,
       textInserted: textInserted,
-      insertionOffset:
-          startWithSpace ? insertionOffset - _len : insertionOffset,
+      insertionOffset: startWithSpace
+          ? insertionOffset - _len
+          : insertionOffset,
       selection: startWithSpace ? selection << _len : selection,
       composing: startWithSpace ? composing << _len : composing,
     );
@@ -401,29 +395,29 @@ extension TextEditingDeltaInsertionExtension on TextEditingDeltaInsertion {
 
 extension on TextEditingDeltaDeletion {
   TextEditingDeltaDeletion format() => TextEditingDeltaDeletion(
-        oldText: oldText << _len,
-        deletedRange: deletedRange << _len,
-        selection: selection << _len,
-        composing: composing << _len,
-      );
+    oldText: oldText << _len,
+    deletedRange: deletedRange << _len,
+    selection: selection << _len,
+    composing: composing << _len,
+  );
 }
 
 extension on TextEditingDeltaReplacement {
   TextEditingDeltaReplacement format() => TextEditingDeltaReplacement(
-        oldText: oldText << _len,
-        replacementText: replacementText,
-        replacedRange: replacedRange << _len,
-        selection: selection << _len,
-        composing: composing << _len,
-      );
+    oldText: oldText << _len,
+    replacementText: replacementText,
+    replacedRange: replacedRange << _len,
+    selection: selection << _len,
+    composing: composing << _len,
+  );
 }
 
 extension on TextEditingDeltaNonTextUpdate {
   TextEditingDeltaNonTextUpdate format() => TextEditingDeltaNonTextUpdate(
-        oldText: oldText << _len,
-        selection: selection << _len,
-        composing: composing << _len,
-      );
+    oldText: oldText << _len,
+    selection: selection << _len,
+    composing: composing << _len,
+  );
 }
 
 extension on TextSelection {
@@ -432,9 +426,9 @@ extension on TextSelection {
   TextSelection operator >>(int shiftAmount) => shift(shiftAmount);
 
   TextSelection shift(int shiftAmount) => TextSelection(
-        baseOffset: max(0, baseOffset + shiftAmount),
-        extentOffset: max(0, extentOffset + shiftAmount),
-      );
+    baseOffset: max(0, baseOffset + shiftAmount),
+    extentOffset: max(0, extentOffset + shiftAmount),
+  );
 }
 
 extension on TextRange {
@@ -457,7 +451,6 @@ extension on String {
     if (shiftAmount > length) {
       return '';
     }
-
     return substring(shiftAmount);
   }
 }

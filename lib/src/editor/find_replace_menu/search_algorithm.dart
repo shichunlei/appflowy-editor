@@ -34,7 +34,6 @@ final class BoyerMooreMatch implements Match {
     if (group != 0) {
       throw RangeError.value(group);
     }
-
     return pattern;
   }
 
@@ -56,11 +55,11 @@ class BoyerMoore extends SearchAlgorithm {
   }
 
   List<Match> _searchMethod(String pattern, String text) {
-    final int m = pattern.length;
-    final int n = text.length;
+    int m = pattern.length;
+    int n = text.length;
 
-    final Map<String, int> badchar = {};
-    final List<Match> matches = [];
+    Map<String, int> badchar = {};
+    List<Match> matches = [];
 
     _badCharHeuristic(pattern, m, badchar);
 
@@ -91,7 +90,7 @@ class BoyerMoore extends SearchAlgorithm {
     // Fill the actual value of last occurrence of a character
     // (indices of table are characters and values are index of occurrence)
     for (int i = 0; i < size; i++) {
-      final String ch = pat[i];
+      String ch = pat[i];
       badchar[ch] = i;
     }
   }

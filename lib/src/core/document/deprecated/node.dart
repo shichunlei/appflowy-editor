@@ -14,13 +14,9 @@ import 'package:flutter/material.dart';
 /// ONLY USE FOR MIGRATION.
 ///
 final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
-  NodeV0({
-    required this.type,
-    Attributes? attributes,
-    this.parent,
-    LinkedList<NodeV0>? children,
-  })  : children = children ?? LinkedList<NodeV0>(),
-        _attributes = attributes ?? {} {
+  NodeV0({required this.type, Attributes? attributes, this.parent, LinkedList<NodeV0>? children})
+    : children = children ?? LinkedList<NodeV0>(),
+      _attributes = attributes ?? {} {
     for (final child in this.children) {
       child.parent = this;
     }
@@ -31,19 +27,11 @@ final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
 
     final jType = json['type'] as String;
     final jChildren = json['children'] as List?;
-    final jAttributes = json['attributes'] != null
-        ? Attributes.from(json['attributes'] as Map)
-        : Attributes.from({});
+    final jAttributes = json['attributes'] != null ? Attributes.from(json['attributes'] as Map) : Attributes.from({});
 
     final children = LinkedList<NodeV0>();
     if (jChildren != null) {
-      children.addAll(
-        jChildren.map(
-          (jChild) => NodeV0.fromJson(
-            Map<String, Object>.from(jChild),
-          ),
-        ),
-      );
+      children.addAll(jChildren.map((jChild) => NodeV0.fromJson(Map<String, Object>.from(jChild))));
     }
 
     NodeV0 node;
@@ -51,17 +39,9 @@ final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
     if (jType == 'text') {
       final jDelta = json['delta'] as List<dynamic>?;
       final delta = jDelta == null ? Delta() : Delta.fromJson(jDelta);
-      node = TextNodeV0(
-        children: children,
-        attributes: jAttributes,
-        delta: delta,
-      );
+      node = TextNodeV0(children: children, attributes: jAttributes, delta: delta);
     } else {
-      node = NodeV0(
-        type: jType,
-        children: children,
-        attributes: jAttributes,
-      );
+      node = NodeV0(type: jType, children: children, attributes: jAttributes);
     }
 
     for (final child in children) {
@@ -86,7 +66,6 @@ final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
     if (subtype != null) {
       return '$type/$subtype';
     }
-
     return type;
   }
 
@@ -94,7 +73,6 @@ final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
     if (attributes[BuiltInAttributeKey.subtype] is String) {
       return attributes[BuiltInAttributeKey.subtype] as String;
     }
-
     return null;
   }
 
@@ -108,8 +86,7 @@ final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
     // Notifies the new attributes
     // if attributes contains 'subtype', should notify parent to rebuild node
     // else, just notify current node.
-    final bool shouldNotifyParent =
-        this.attributes['subtype'] != oldAttributes['subtype'];
+    bool shouldNotifyParent = this.attributes['subtype'] != oldAttributes['subtype'];
     shouldNotifyParent ? parent?.notifyListeners() : notifyListeners();
   }
 
@@ -137,7 +114,6 @@ final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
       entry.parent = this;
       children.add(entry);
       notifyListeners();
-
       return;
     }
 
@@ -180,38 +156,23 @@ final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
   }
 
   Map<String, Object> toJson() {
-    final map = <String, Object>{
-      'type': type,
-    };
+    var map = <String, Object>{'type': type};
     if (children.isNotEmpty) {
-      map['children'] =
-          children.map((node) => node.toJson()).toList(growable: false);
+      map['children'] = children.map((node) => node.toJson()).toList(growable: false);
     }
     if (attributes.isNotEmpty) {
       map['attributes'] = attributes;
     }
-
     return map;
   }
 
-  NodeV0 copyWith({
-    String? type,
-    LinkedList<NodeV0>? children,
-    Attributes? attributes,
-  }) {
-    final node = NodeV0(
-      type: type ?? this.type,
-      attributes: attributes ?? {...this.attributes},
-      children: children,
-    );
+  NodeV0 copyWith({String? type, LinkedList<NodeV0>? children, Attributes? attributes}) {
+    final node = NodeV0(type: type ?? this.type, attributes: attributes ?? {...this.attributes}, children: children);
     if (children == null && this.children.isNotEmpty) {
       for (final child in this.children) {
-        node.children.add(
-          child.copyWith()..parent = node,
-        );
+        node.children.add(child.copyWith()..parent = node);
       }
     }
-
     return node;
   }
 
@@ -226,28 +187,17 @@ final class NodeV0 extends ChangeNotifier with LinkedListEntry<NodeV0> {
       }
       index += 1;
     }
-
     return parent!._computePath([index, ...previous]);
   }
 }
 
 final class TextNodeV0 extends NodeV0 {
-  TextNodeV0({
-    required Delta delta,
-    super.children,
-    Attributes? attributes,
-  })  : _delta = delta,
-        super(
-          type: 'text',
-          attributes: attributes ?? {},
-        );
+  TextNodeV0({required this._delta, super.children, Attributes? attributes})
+    : super(type: 'text', attributes: attributes ?? {});
 
   TextNodeV0.empty({Attributes? attributes})
-      : _delta = Delta(operations: [TextInsert('')]),
-        super(
-          type: 'text',
-          attributes: attributes ?? {},
-        );
+    : _delta = Delta(operations: [TextInsert('')]),
+      super(type: 'text', attributes: attributes ?? {});
 
   Delta _delta;
 
@@ -262,17 +212,11 @@ final class TextNodeV0 extends NodeV0 {
   Map<String, Object> toJson() {
     final map = super.toJson();
     map['delta'] = delta.toJson();
-
     return map;
   }
 
   @override
-  TextNodeV0 copyWith({
-    String? type = 'text',
-    LinkedList<NodeV0>? children,
-    Attributes? attributes,
-    Delta? delta,
-  }) {
+  TextNodeV0 copyWith({String? type = 'text', LinkedList<NodeV0>? children, Attributes? attributes, Delta? delta}) {
     final textNode = TextNodeV0(
       children: children,
       attributes: attributes ?? this.attributes,
@@ -280,12 +224,9 @@ final class TextNodeV0 extends NodeV0 {
     );
     if (children == null && this.children.isNotEmpty) {
       for (final child in this.children) {
-        textNode.children.add(
-          child.copyWith()..parent = textNode,
-        );
+        textNode.children.add(child.copyWith()..parent = textNode);
       }
     }
-
     return textNode;
   }
 
@@ -302,16 +243,12 @@ extension NodeV0Equality on Iterable<NodeV0> {
         return false;
       }
     }
-
     return true;
   }
 
   bool _nodeEquals<T, U>(T base, U other) {
     if (identical(this, other)) return true;
 
-    return base is NodeV0 &&
-        other is NodeV0 &&
-        other.type == base.type &&
-        other.children.equals(base.children);
+    return base is NodeV0 && other is NodeV0 && other.type == base.type && other.children.equals(base.children);
   }
 }

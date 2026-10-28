@@ -12,7 +12,7 @@ void main() {
     final editor = tester.editor..addParagraphs(3, initialText: text);
     await editor.startTesting();
 
-    final selection = Selection.single(
+    var selection = Selection.single(
       path: [1],
       startOffset: 2,
       endOffset: text.length - 2,
@@ -52,7 +52,7 @@ void main() {
     // Tap red color button
     await tester.tap(find.widgetWithText(ColorButton, 'Red'));
     await tester.pumpAndSettle(const Duration(milliseconds: 500));
-    final node = editor.editorState.getNodeAtPath([1]);
+    var node = editor.editorState.getNodeAtPath([1]);
     // Check if the text color is red
     expect(
       node?.allSatisfyInSelection(selection, (delta) {

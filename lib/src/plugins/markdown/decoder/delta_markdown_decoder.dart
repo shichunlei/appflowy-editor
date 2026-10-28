@@ -10,12 +10,13 @@ import 'custom_syntaxes/formula_syntax.dart';
 
 class DeltaMarkdownDecoder extends Converter<String, Delta>
     implements md.NodeVisitor {
-  DeltaMarkdownDecoder({
-    this.customInlineSyntaxes = const [],
-  });
   final _delta = Delta();
   final Attributes _attributes = {};
   final List<md.InlineSyntax> customInlineSyntaxes;
+
+  DeltaMarkdownDecoder({
+    this.customInlineSyntaxes = const [],
+  });
 
   @override
   Delta convert(String input) {
@@ -32,7 +33,6 @@ class DeltaMarkdownDecoder extends Converter<String, Delta>
     for (final node in document) {
       node.accept(this);
     }
-
     return _delta;
   }
 
@@ -44,7 +44,6 @@ class DeltaMarkdownDecoder extends Converter<String, Delta>
     for (final node in nodes) {
       node.accept(this);
     }
-
     return _delta;
   }
 
@@ -56,7 +55,6 @@ class DeltaMarkdownDecoder extends Converter<String, Delta>
   @override
   bool visitElementBefore(md.Element element) {
     _addAttributeKey(element);
-
     return true;
   }
 

@@ -27,7 +27,7 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     final document = parse(input);
     final body = document.body;
     if (body == null) {
-      return Document.blank();
+      return Document.blank(withInitialText: false);
     }
 
     ///This is used for temporarily handling documents copied from Google Docs,
@@ -37,8 +37,7 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     /// this method needs to be removed in the future as it is not stable
     final parseForSingleChild = body.children.length == 1 &&
         HTMLTags.formattingElements.contains(body.children.first.localName);
-
-    return Document.blank()
+    return Document.blank(withInitialText: false)
       ..insert(
         [0],
         parseForSingleChild
@@ -100,7 +99,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     if (delta.isNotEmpty) {
       nodes.add(paragraphNode(delta: delta));
     }
-
     return nodes;
   }
 
@@ -112,31 +110,22 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     switch (localName) {
       case HTMLTags.h1:
         return _parseHeadingElement(element, level: 1);
-
       case HTMLTags.h2:
         return _parseHeadingElement(element, level: 2);
-
       case HTMLTags.h3:
         return _parseHeadingElement(element, level: 3);
-
       case HTMLTags.h4:
         return _parseHeadingElement(element, level: 4);
-
       case HTMLTags.h5:
         return _parseHeadingElement(element, level: 5);
-
       case HTMLTags.h6:
         return _parseHeadingElement(element, level: 6);
-
       case HTMLTags.unorderedList:
         return _parseUnOrderListElement(element);
-
       case HTMLTags.orderedList:
         return _parseOrderListElement(element);
-
       case HTMLTags.table:
         return _parseTable(element);
-
       case HTMLTags.list:
         return [
           _parseListElement(
@@ -144,16 +133,12 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
             type: type,
           ),
         ];
-
       case HTMLTags.paragraph:
         return _parseParagraphElement(element);
-
       case HTMLTags.blockQuote:
         return [_parseBlockQuoteElement(element)];
-
       case HTMLTags.image:
         return [_parseImageElement(element)];
-
       default:
         return _parseParagraphElement(element);
     }
@@ -201,7 +186,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
       nodes.addAll(tabledata);
       rowLength++;
     }
-
     return (colLength, rowLength, nodes);
   }
 
@@ -213,7 +197,7 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     int columnPosition = 0;
 
     for (final data in element.children) {
-      final Attributes attributes = {
+      Attributes attributes = {
         TableCellBlockKeys.colPosition: columnPosition,
         TableCellBlockKeys.rowPosition: rowPosition,
       };
@@ -255,7 +239,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     } else {
       nodes.addAll(_parseTableDataElementsData(element));
     }
-
     return nodes;
   }
 
@@ -286,7 +269,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     if (delta.isNotEmpty) {
       nodes.add(paragraphNode(delta: delta));
     }
-
     return nodes;
   }
 
@@ -300,22 +282,17 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
       case HTMLTags.bold || HTMLTags.strong:
         attributes = {AppFlowyRichTextKeys.bold: true};
         break;
-
       case HTMLTags.italic || HTMLTags.em:
         attributes = {AppFlowyRichTextKeys.italic: true};
         break;
-
       case HTMLTags.underline:
         attributes = {AppFlowyRichTextKeys.underline: true};
         break;
-
       case HTMLTags.del:
         attributes = {AppFlowyRichTextKeys.strikethrough: true};
         break;
-
       case HTMLTags.code:
         attributes = {AppFlowyRichTextKeys.code: true};
-
       case HTMLTags.span || HTMLTags.mark:
         final deltaAttributes = _getDeltaAttributesFromHTMLAttributes(
               element.attributes,
@@ -323,7 +300,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
             {};
         attributes.addAll(deltaAttributes);
         break;
-
       case HTMLTags.anchor:
         final href = element.attributes['href'];
         if (href != null) {
@@ -334,14 +310,12 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
       case HTMLTags.strikethrough:
         attributes = {AppFlowyRichTextKeys.strikethrough: true};
         break;
-
       default:
         break;
     }
     for (final child in element.children) {
       attributes.addAll(_parserFormattingElementAttributes(child));
     }
-
     return attributes;
   }
 
@@ -350,7 +324,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     required int level,
   }) {
     final (delta, specialNodes) = _parseDeltaElement(element);
-
     return [
       headingNode(
         level: level,
@@ -362,7 +335,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
 
   Node _parseBlockQuoteElement(dom.Element element) {
     final (delta, nodes) = _parseDeltaElement(element);
-
     return quoteNode(
       delta: delta,
       children: nodes,
@@ -405,11 +377,9 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
         if (HTMLTags.specialElements.contains(child.localName)) {
           return _parseSpecialElements(child, type: type);
         }
-
         return <Node>[];
       }).toList();
     }
-
     return Node(
       type: type,
       children: node,
@@ -419,7 +389,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
 
   Iterable<Node> _parseParagraphElement(dom.Element element) {
     final (delta, specialNodes) = _parseDeltaElement(element);
-
     return [paragraphNode(delta: delta), ...specialNodes];
   }
 
@@ -470,13 +439,10 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
             );
           }
         }
-      } else if (child is dom.Text) {
-        delta.insert(child.text.replaceAll(RegExp(r'\n+$'), ''));
+      } else {
+        delta.insert(child.text?.replaceAll(RegExp(r'\n+$'), '') ?? '');
       }
-      // other node types (e.g. dom.Comment) carry no visible content and
-      // are intentionally skipped, mirroring _parseElement's handling.
     }
-
     return (delta, nodes);
   }
 
@@ -509,11 +475,9 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
           case 'underline':
             attributes[AppFlowyRichTextKeys.underline] = true;
             break;
-
           case 'line-through':
             attributes[AppFlowyRichTextKeys.strikethrough] = true;
             break;
-
           default:
             break;
         }
@@ -569,7 +533,6 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
       }
       result[tuples[0].trim()] = tuples[1].trim();
     }
-
     return result;
   }
 }

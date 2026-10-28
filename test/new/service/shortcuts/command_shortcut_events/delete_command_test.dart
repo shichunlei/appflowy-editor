@@ -274,7 +274,7 @@ void main() async {
     // After
     // | to AppFlowy Editor 🔥!
     testWidgets('Delete the not collapsed selection', (tester) async {
-      final TestableEditor editor = tester.editor
+      TestableEditor editor = tester.editor
         ..addParagraph(
           initialText: text,
         );

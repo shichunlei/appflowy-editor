@@ -70,12 +70,14 @@ extension TextTransforms on EditorState {
     transaction.insertNode(
       next,
       nodeBuilder(insertedNode),
+      deepCopy: true,
     );
 
     // Set the selection to be at the beginning of the new paragraph.
     transaction.afterSelection = Selection.collapsed(
       Position(
         path: next,
+        offset: 0,
       ),
     );
     transaction.selectionExtraInfo = {};
@@ -313,10 +315,8 @@ extension TextTransforms on EditorState {
     node ??= getNodeAtPath(path!);
     if (node == null) {
       assert(false, 'node is null');
-
       return;
     }
-
     return apply(
       transaction..insertText(node, index, text),
     );
@@ -327,7 +327,6 @@ extension TextTransforms on EditorState {
     if (selection == null || !selection.isCollapsed) {
       return;
     }
-
     return insertText(
       selection.startIndex,
       text,
@@ -342,7 +341,7 @@ extension TextTransforms on EditorState {
   List<String> getTextInSelection([
     Selection? selection,
   ]) {
-    final List<String> res = [];
+    List<String> res = [];
     selection ??= this.selection;
     if (selection == null || selection.isCollapsed) {
       return res;
@@ -357,7 +356,6 @@ extension TextTransforms on EditorState {
       final endIndex = node == nodes.last ? selection.endIndex : delta.length;
       res.add(delta.slice(startIndex, endIndex).toPlainText());
     }
-
     return res;
   }
 
@@ -398,7 +396,6 @@ extension TextTransforms on EditorState {
       }
       start += length;
     }
-
     return null;
   }
 

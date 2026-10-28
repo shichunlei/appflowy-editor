@@ -76,6 +76,7 @@ class TextFieldAndEditor extends StatelessWidget {
       home: Scaffold(
         body: SafeArea(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               TextField(
                 controller: controller,

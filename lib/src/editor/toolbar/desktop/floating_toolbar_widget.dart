@@ -55,7 +55,6 @@ class FloatingToolbarWidget extends StatefulWidget {
 
 class _FloatingToolbarWidgetState extends State<FloatingToolbarWidget> {
   EditorState get editorState => widget.editorState;
-
   PropertyValueNotifier<Selection?> get selectionNotifier =>
       editorState.selectionNotifier;
 
@@ -83,11 +82,10 @@ class _FloatingToolbarWidgetState extends State<FloatingToolbarWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final activeItems = _computeActiveItems();
+    var activeItems = _computeActiveItems();
     if (activeItems.isEmpty) {
       return const SizedBox.shrink();
     }
-
     return Material(
       borderRadius: BorderRadius.circular(8.0),
       color: widget.backgroundColor,

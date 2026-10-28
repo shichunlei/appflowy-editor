@@ -41,8 +41,19 @@ class Document {
 
     final document = Map<String, Object>.from(json['document'] as Map);
     final root = Node.fromJson(document);
-
     return Document(root: root);
+  }
+
+  /// Creates a empty document with a single text node.
+  @Deprecated('use Document.blank() instead')
+  factory Document.empty() {
+    final root = Node(
+      type: 'document',
+      children: LinkedList<Node>()..add(TextNode.empty()),
+    );
+    return Document(
+      root: root,
+    );
   }
 
   /// Creates a blank [Document] containing an empty root [Node].
@@ -55,7 +66,6 @@ class Document {
       type: 'page',
       children: withInitialText ? [paragraphNode()] : [],
     );
-
     return Document(
       root: root,
     );
@@ -73,7 +83,6 @@ class Document {
     while (current != null && current.children.isNotEmpty) {
       current = current.children.last;
     }
-
     return current;
   }
 
@@ -101,7 +110,6 @@ class Document {
       for (final node in nodes) {
         target.insertBefore(node);
       }
-
       return true;
     }
 
@@ -110,7 +118,6 @@ class Document {
       for (var i = 0; i < nodes.length; i++) {
         parent.insert(nodes.elementAt(i), index: path.last + i);
       }
-
       return true;
     }
 
@@ -132,7 +139,6 @@ class Document {
       target = next;
       length--;
     }
-
     return true;
   }
 
@@ -141,7 +147,6 @@ class Document {
     // if the path is empty, it means the root node.
     if (path.isEmpty) {
       root.updateAttributes(attributes);
-
       return true;
     }
     final target = nodeAtPath(path);
@@ -149,36 +154,6 @@ class Document {
       return false;
     }
     target.updateAttributes(attributes);
-
-    return true;
-  }
-
-  /// Updates the [Node] type at the given [Path] while preserving its id,
-  /// children, external values, and temporary metadata.
-  bool updateNodeType(Path path, String type, Attributes attributes) {
-    if (path.isEmpty) {
-      return false;
-    }
-
-    final target = nodeAtPath(path);
-    final parent = target?.parent;
-    if (target == null || parent == null) {
-      return false;
-    }
-
-    final index = path.last;
-    final replacement = Node(
-      type: type,
-      id: target.id,
-      attributes: {...attributes},
-      children: target.children.toList(growable: false),
-    )
-      ..externalValues = target.externalValues
-      ..extraInfos = target.extraInfos;
-
-    target.unlink();
-    parent.insert(replacement, index: index);
-
     return true;
   }
 
@@ -192,9 +167,7 @@ class Document {
     if (target == null || targetDelta == null) {
       return false;
     }
-
-    target.updateAttributes({'delta': targetDelta.compose(delta).toJson()});
-
+    target.updateAttributes({'delta': (targetDelta.compose(delta)).toJson()});
     return true;
   }
 
@@ -225,9 +198,5 @@ class Document {
     return {
       'document': root.toJson(),
     };
-  }
-
-  Document deepCopy() {
-    return Document.fromJson(toJson());
   }
 }

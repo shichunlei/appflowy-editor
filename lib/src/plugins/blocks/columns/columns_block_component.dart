@@ -38,7 +38,6 @@ class ColumnsBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
-
     return ColumnsBlockComponent(
       key: node.key,
       node: node,
@@ -106,11 +105,6 @@ class ColumnsBlockComponentState extends State<ColumnsBlockComponent>
       child: child,
     );
 
-    child = Padding(
-      padding: margin,
-      child: child,
-    );
-
     return child;
   }
 
@@ -146,7 +140,6 @@ class ColumnsBlockComponentState extends State<ColumnsBlockComponent>
         );
       }
     }
-
     return children;
   }
 
@@ -181,7 +174,6 @@ class ColumnsBlockComponentState extends State<ColumnsBlockComponent>
       Selection.collapsed(position),
       shiftWithBaseOffset: shiftWithBaseOffset,
     );
-
     return rects.firstOrNull;
   }
 
@@ -201,7 +193,6 @@ class ColumnsBlockComponentState extends State<ColumnsBlockComponent>
             renderBox.size,
       ];
     }
-
     return [Offset.zero & _renderBox!.size];
   }
 

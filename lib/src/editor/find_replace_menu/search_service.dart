@@ -49,13 +49,13 @@ class SearchService {
     for (final n in _getAllNodes()) {
       //matches list will contain the offsets where the desired word,
       //is found.
-      final List<int> matches = searchAlgorithm
+      List<int> matches = searchAlgorithm
           .searchMethod(pattern, n.delta!.toPlainText())
           .map((e) => e.start)
           .toList();
       //we will store this list of offsets along with their path,
       //in a list of positions.
-      for (final int matchedOffset in matches) {
+      for (int matchedOffset in matches) {
         matchedPositions.add(Position(path: n.path, offset: matchedOffset));
       }
     }
@@ -112,7 +112,7 @@ class SearchService {
     Position start, [
     bool isNavigating = false,
   ]) async {
-    final Position end = Position(
+    Position end = Position(
       path: start.path,
       offset: start.offset + queriedPattern.length,
     );
@@ -131,7 +131,7 @@ class SearchService {
     //not selected.
     if (selectedIndex > -1) {
       final currentMatch = matchedPositions[selectedIndex];
-      final Position end = Position(
+      Position end = Position(
         path: currentMatch.path,
         offset: currentMatch.offset + queriedPattern.length,
       );

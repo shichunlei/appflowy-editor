@@ -10,7 +10,7 @@ class HeadingBlockKeys {
 
   /// The level data of a heading block.
   ///
-  /// The value is a int.
+  /// The value is an integer from 1 through 6.
   static const String level = 'level';
 
   static const String delta = blockComponentDelta;
@@ -20,6 +20,22 @@ class HeadingBlockKeys {
   static const String textDirection = blockComponentTextDirection;
 }
 
+/// Creates a heading node with a level from one through six.
+///
+/// [level] is clamped to the supported range after its debug assertion.
+/// [text] supplies initial content when [delta] is absent. [attributes] are
+/// merged into the generated attributes; an overriding level is clamped to 1–6.
+/// [textDirection] is stored when set.
+///
+/// ```dart
+/// import 'package:appflowy_editor/appflowy_editor.dart';
+///
+/// final node = headingNode(level: 2, text: 'Section title');
+/// ```
+///
+/// [level] is the heading depth. [text] is the initial text. [delta] is the
+/// structured text content. [textDirection] is an optional direction value.
+/// [attributes] contains additional or overriding node attributes.
 Node headingNode({
   required int level,
   String? text,
@@ -28,14 +44,14 @@ Node headingNode({
   Attributes? attributes,
 }) {
   assert(level >= 1 && level <= 6);
-
   return Node(
     type: HeadingBlockKeys.type,
     attributes: {
       HeadingBlockKeys.delta: (delta ?? (Delta()..insert(text ?? ''))).toJson(),
-      HeadingBlockKeys.level: level.clamp(1, 6),
-      if (attributes != null) ...attributes,
-      if (textDirection != null) HeadingBlockKeys.textDirection: textDirection,
+      ...?attributes,
+      HeadingBlockKeys.level:
+          ((attributes?[HeadingBlockKeys.level] as int?) ?? level).clamp(1, 6),
+      HeadingBlockKeys.textDirection: textDirection,
     },
   );
 }
@@ -52,7 +68,6 @@ class HeadingBlockComponentBuilder extends BlockComponentBuilder {
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
-
     return HeadingBlockComponentWidget(
       key: node.key,
       node: node,
@@ -119,7 +134,9 @@ class _HeadingBlockComponentWidgetState
   @override
   late final editorState = Provider.of<EditorState>(context, listen: false);
 
-  int get level => widget.node.attributes[HeadingBlockKeys.level] as int? ?? 1;
+  /// Reads the borrowed node level within H1–H6 without changing stored data.
+  int get level =>
+      (widget.node.attributes[HeadingBlockKeys.level] as int? ?? 1).clamp(1, 6);
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +152,7 @@ class _HeadingBlockComponentWidgetState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
         textDirection: textDirection,
         children: [
           Flexible(
@@ -152,7 +170,6 @@ class _HeadingBlockComponentWidgetState
                   widget.textStyleBuilder?.call(level) ??
                       defaultTextStyle(level),
                 );
-
                 return result;
               },
               placeholderText: placeholderText,
@@ -184,19 +201,14 @@ class _HeadingBlockComponentWidgetState
       supportTypes: const [
         BlockSelectionType.block,
       ],
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: child,
     );
 
-    final decoration = this.decoration;
-    if (decoration != null) {
-      child = DecoratedBox(
-        decoration: decoration,
-        child: child,
-      );
-    }
+    child = Container(
+      padding: padding,
+      decoration: decoration,
+      child: child,
+    );
 
     if (widget.showActions && widget.actionBuilder != null) {
       child = BlockComponentActionWrapper(
@@ -207,18 +219,12 @@ class _HeadingBlockComponentWidgetState
       );
     }
 
-    child = Padding(
-      padding: margin,
-      child: child,
-    );
-
     return child;
   }
 
   TextStyle? defaultTextStyle(int level) {
     final fontSizes = [32.0, 28.0, 24.0, 18.0, 18.0, 18.0];
     final fontSize = fontSizes.elementAtOrNull(level) ?? 18.0;
-
     return TextStyle(
       fontSize: fontSize,
       fontWeight: FontWeight.bold,
